@@ -1,34 +1,48 @@
 import { useState } from 'react';
-import { View, Text, StyleSheet } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
 import { router } from 'expo-router';
+import { useTranslation } from 'react-i18next';
 import { Button, Input } from '../../components';
 import { colors, typography, spacing } from '../../theme';
+import { sendOtp } from '../../lib/auth';
 
 export default function PhoneScreen() {
+  const { t } = useTranslation();
   const [phone, setPhone] = useState('');
   const [error, setError] = useState('');
+  const [loading, setLoading] = useState(false);
 
-  const handleContinue = () => {
+  const handleContinue = async () => {
     if (!phone || phone.length < 11) {
-      setError('Ilagay ang wastong numero ng telepono');
+      setError(t('phone.error'));
       return;
     }
     setError('');
-    router.push({ pathname: '/(auth)/otp', params: { phone } });
+    setLoading(true);
+    try {
+      await sendOtp(phone);
+      router.push({ pathname: '/(auth)/otp', params: { phone } });
+    } catch (err: any) {
+      setError(t('phone.apiError'));
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
     <View style={styles.container}>
+      <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
+        <Text style={styles.backText}>{t('phone.back')}</Text>
+      </TouchableOpacity>
+
       <View style={styles.header}>
-        <Text style={styles.title}>Ano ang iyong numero?</Text>
-        <Text style={styles.subtitle}>
-          Magpapadala kami ng OTP sa iyong telepono
-        </Text>
+        <Text style={styles.title}>{t('phone.title')}</Text>
+        <Text style={styles.subtitle}>{t('phone.subtitle')}</Text>
       </View>
 
       <Input
-        label="Numero ng Telepono"
-        placeholder="09XXXXXXXXX"
+        label={t('phone.label')}
+        placeholder={t('phone.placeholder')}
         value={phone}
         onChangeText={setPhone}
         keyboardType="phone-pad"
@@ -37,8 +51,10 @@ export default function PhoneScreen() {
       />
 
       <Button
-        label="Magpadala ng OTP"
+        label={loading ? t('phone.sending') : t('phone.button')}
         onPress={handleContinue}
+        loading={loading}
+        disabled={loading}
       />
     </View>
   );
@@ -49,11 +65,15 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: colors.white,
     padding: spacing.xl,
-    paddingTop: 80,
+    paddingTop: 60,
   },
-  header: {
-    marginBottom: spacing.xxl,
+  backButton: { marginBottom: spacing.xl },
+  backText: {
+    fontSize: typography.fontSizes.md,
+    color: colors.primary,
+    fontWeight: typography.fontWeights.medium,
   },
+  header: { marginBottom: spacing.xxl },
   title: {
     fontSize: typography.fontSizes.xxl,
     fontWeight: typography.fontWeights.bold,

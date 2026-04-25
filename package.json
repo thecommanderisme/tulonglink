@@ -7,5 +7,10 @@
   ],
   "scripts": {
     "mobile": "npm run start --workspace=apps/mobile"
+  },
+  "dependencies": {
+    "@react-native-async-storage/async-storage": "2.2.0",
+    "axios": "^1.15.2",
+    "expo-secure-store": "~15.0.8"
   }
 }
