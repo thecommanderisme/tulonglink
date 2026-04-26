@@ -1,15 +1,23 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef } from 'react';
 import { Stack } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
-import { isLoggedIn } from '../lib/auth';
+import { I18nextProvider } from 'react-i18next';
+import i18n from '../lib/i18n';
 import { initI18n } from '../lib/i18n';
+import { isLoggedIn } from '../lib/auth';
+import {
+  registerForPushNotifications,
+  addNotificationListener,
+  addNotificationResponseListener
+} from '../lib/notifications';
 import { router } from 'expo-router';
 
 export default function RootLayout() {
-  const [ready, setReady] = useState(false);
+  const notificationsSetup = useRef(false);
 
   useEffect(() => {
     init();
+    setupNotifications();
   }, []);
 
   const init = async () => {
@@ -20,16 +28,37 @@ export default function RootLayout() {
     } else {
       router.replace('/(auth)/welcome');
     }
-    setReady(true);
+  };
+
+  const setupNotifications = async () => {
+    if (notificationsSetup.current) return;
+    notificationsSetup.current = true;
+
+    await registerForPushNotifications();
+
+    const notifListener = addNotificationListener(notification => {
+      console.log('Notification received:', notification);
+    });
+
+    const responseListener = addNotificationResponseListener(response => {
+      const data = response.notification.request.content.data;
+      if (data?.type === 'job') router.push('/(tabs)/jobs');
+      else if (data?.type === 'announcement') router.push('/(tabs)/feed');
+    });
+
+    return () => {
+      notifListener.remove();
+      responseListener.remove();
+    };
   };
 
   return (
-    <>
+    <I18nextProvider i18n={i18n}>
       <StatusBar style="light" />
       <Stack screenOptions={{ headerShown: false }}>
         <Stack.Screen name="(auth)" />
         <Stack.Screen name="(tabs)" />
       </Stack>
-    </>
+    </I18nextProvider>
   );
 }

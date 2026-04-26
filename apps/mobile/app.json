@@ -13,20 +13,36 @@
       "backgroundColor": "#1D9E75"
     },
     "ios": {
-      "supportsTablet": false
+      "supportsTablet": false,
+      "bundleIdentifier": "com.tulonglink.mobile",
+      "googleServicesFile": "./GoogleService-Info.plist"
     },
     "android": {
       "adaptiveIcon": {
         "foregroundImage": "./assets/adaptive-icon.png",
         "backgroundColor": "#1D9E75"
-      }
+      },
+      "package": "com.tulonglink.mobile"
     },
     "web": {
       "bundler": "metro"
     },
     "plugins": [
-      "expo-localization",
-      "expo-sqlite"
-    ]
+      "expo-router",
+      [
+        "expo-notifications",
+        {
+          "icon": "./assets/icon.png",
+          "color": "#1D9E75"
+        }
+      ]
+    ],
+    "extra": {
+      "router": {},
+      "eas": {
+        "projectId": "1b67d243-5bed-46bd-bb2a-82a042995212"
+      }
+    },
+    "owner": "hizondaniel"
   }
 }
