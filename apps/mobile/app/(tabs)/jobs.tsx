@@ -1,10 +1,11 @@
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import {
   View, Text, StyleSheet, ScrollView,
   TouchableOpacity, RefreshControl, ActivityIndicator
 } from 'react-native';
 import { colors, typography, spacing } from '../../theme';
 import { Card, Badge, Input } from '../../components';
+import { useCachedFetch } from '../../lib/useCachedFetch';
 import api from '../../lib/api';
 
 interface Job {
@@ -21,38 +22,16 @@ interface Job {
 const CATEGORIES = ['Lahat', 'Bahay', 'Pagkain', 'Konstruksiyon', 'Bantay', 'Iba pa'];
 
 export default function JobsScreen() {
-  const [jobs, setJobs] = useState<Job[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [refreshing, setRefreshing] = useState(false);
   const [search, setSearch] = useState('');
   const [selectedCategory, setSelectedCategory] = useState('Lahat');
   const [applying, setApplying] = useState<number | null>(null);
   const [appliedJobs, setAppliedJobs] = useState<number[]>([]);
 
-  useEffect(() => {
-    fetchJobs();
-  }, [selectedCategory]);
+  const params: any = {};
+  if (selectedCategory !== 'Lahat') params.category = selectedCategory;
+  if (search) params.search = search;
 
-  const fetchJobs = async () => {
-    try {
-      setLoading(true);
-      const params: any = {};
-      if (selectedCategory !== 'Lahat') params.category = selectedCategory;
-      if (search) params.search = search;
-      const response = await api.get('/jobs', { params });
-      setJobs(response.data);
-    } catch (err) {
-      console.log('Error fetching jobs:', err);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const handleRefresh = async () => {
-    setRefreshing(true);
-    await fetchJobs();
-    setRefreshing(false);
-  };
+  const { data: jobs, loading, refresh, isFromCache } = useCachedFetch<Job[]>('/jobs', params);
 
   const handleApply = async (jobId: number) => {
     try {
@@ -81,7 +60,7 @@ export default function JobsScreen() {
           placeholder="Maghanap ng trabaho..."
           value={search}
           onChangeText={setSearch}
-          onSubmitEditing={fetchJobs}
+          onSubmitEditing={refresh}
         />
       </View>
 
@@ -111,12 +90,21 @@ export default function JobsScreen() {
         ))}
       </ScrollView>
 
+      {/* Offline indicator */}
+      {isFromCache && (
+        <View style={styles.cacheBar}>
+          <Text style={styles.cacheText}>
+            📶 Offline mode — showing cached data
+          </Text>
+        </View>
+      )}
+
       {/* Jobs list */}
       {loading ? (
         <View style={styles.center}>
           <ActivityIndicator color={colors.primary} size="large" />
         </View>
-      ) : jobs.length === 0 ? (
+      ) : !jobs || jobs.length === 0 ? (
         <View style={styles.center}>
           <Text style={styles.emptyText}>Walang trabaho ngayon</Text>
           <Text style={styles.emptySubtext}>Subukan ulit mamaya</Text>
@@ -127,8 +115,8 @@ export default function JobsScreen() {
           showsVerticalScrollIndicator={false}
           refreshControl={
             <RefreshControl
-              refreshing={refreshing}
-              onRefresh={handleRefresh}
+              refreshing={false}
+              onRefresh={refresh}
               tintColor={colors.primary}
             />
           }
@@ -144,15 +132,9 @@ export default function JobsScreen() {
               </View>
 
               <View style={styles.jobMeta}>
-                {job.pay && (
-                  <Text style={styles.metaText}>💰 {job.pay}</Text>
-                )}
-                {job.location && (
-                  <Text style={styles.metaText}>📍 {job.location}</Text>
-                )}
-                {job.category && (
-                  <Text style={styles.metaText}>🏷 {job.category}</Text>
-                )}
+                {job.pay && <Text style={styles.metaText}>💰 {job.pay}</Text>}
+                {job.location && <Text style={styles.metaText}>📍 {job.location}</Text>}
+                {job.category && <Text style={styles.metaText}>🏷 {job.category}</Text>}
               </View>
 
               <View style={styles.jobFooter}>
@@ -186,10 +168,7 @@ export default function JobsScreen() {
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: colors.gray50,
-  },
+  container: { flex: 1, backgroundColor: colors.gray50 },
   header: {
     padding: spacing.xl,
     paddingTop: 60,
@@ -210,18 +189,18 @@ const styles = StyleSheet.create({
     paddingBottom: 0,
     backgroundColor: colors.white,
   },
-categories: {
-  backgroundColor: colors.white,
-  borderBottomWidth: 0.5,
-  borderBottomColor: colors.gray200,
-  maxHeight: 56,
-},
+  categories: {
+    backgroundColor: colors.white,
+    borderBottomWidth: 0.5,
+    borderBottomColor: colors.gray200,
+    maxHeight: 56,
+  },
   categoriesContent: {
     paddingHorizontal: spacing.lg,
     paddingVertical: spacing.sm,
     gap: spacing.sm,
   },
-categoryBtn: {
+  categoryBtn: {
     paddingHorizontal: spacing.lg,
     paddingVertical: 6,
     borderRadius: 999,
@@ -230,7 +209,7 @@ categoryBtn: {
     backgroundColor: colors.white,
     height: 36,
     justifyContent: 'center',
-},
+  },
   categoryBtnActive: {
     backgroundColor: colors.primary,
     borderColor: colors.primary,
@@ -240,8 +219,16 @@ categoryBtn: {
     color: colors.gray600,
     fontWeight: typography.fontWeights.medium,
   },
-  categoryTextActive: {
-    color: colors.white,
+  categoryTextActive: { color: colors.white },
+  cacheBar: {
+    backgroundColor: colors.warningLight,
+    padding: spacing.sm,
+    alignItems: 'center',
+  },
+  cacheText: {
+    fontSize: typography.fontSizes.xs,
+    color: colors.warning,
+    fontWeight: typography.fontWeights.medium,
   },
   list: { flex: 1, padding: spacing.lg },
   center: {
@@ -272,10 +259,7 @@ categoryBtn: {
     flex: 1,
     marginRight: spacing.sm,
   },
-  jobMeta: {
-    gap: spacing.xs,
-    marginBottom: spacing.md,
-  },
+  jobMeta: { gap: spacing.xs, marginBottom: spacing.md },
   metaText: {
     fontSize: typography.fontSizes.sm,
     color: colors.gray600,
@@ -300,9 +284,7 @@ categoryBtn: {
     minWidth: 100,
     alignItems: 'center',
   },
-  applyBtnDone: {
-    backgroundColor: colors.success,
-  },
+  applyBtnDone: { backgroundColor: colors.success },
   applyText: {
     fontSize: typography.fontSizes.sm,
     color: colors.white,

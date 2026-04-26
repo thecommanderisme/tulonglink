@@ -1,11 +1,11 @@
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import {
   View, Text, StyleSheet, ScrollView,
   TouchableOpacity, RefreshControl, ActivityIndicator
 } from 'react-native';
 import { colors, typography, spacing } from '../../theme';
 import { Card, Badge } from '../../components';
-import api from '../../lib/api';
+import { useCachedFetch } from '../../lib/useCachedFetch';
 
 interface Announcement {
   id: number;
@@ -30,48 +30,24 @@ const CATEGORY_COLORS: Record<string, any> = {
 };
 
 export default function FeedScreen() {
-  const [announcements, setAnnouncements] = useState<Announcement[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [refreshing, setRefreshing] = useState(false);
   const [selectedCategory, setSelectedCategory] = useState('Lahat');
 
-  useEffect(() => {
-    fetchAnnouncements();
-  }, [selectedCategory]);
-
-  const fetchAnnouncements = async () => {
-    try {
-      setLoading(true);
-      const params: any = {};
-      if (selectedCategory !== 'Lahat') params.category = selectedCategory;
-      const response = await api.get('/announcements', { params });
-      setAnnouncements(response.data);
-    } catch (err) {
-      console.log('Error fetching announcements:', err);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const handleRefresh = async () => {
-    setRefreshing(true);
-    await fetchAnnouncements();
-    setRefreshing(false);
-  };
+  const { data: announcements, loading, refresh, isFromCache } =
+    useCachedFetch<Announcement[]>(
+      '/announcements',
+      selectedCategory !== 'Lahat' ? { category: selectedCategory } : {}
+    );
 
   const formatDate = (dateStr: string) => {
     if (!dateStr) return '';
     const date = new Date(dateStr);
-    return date.toLocaleDateString('fil-PH', {
-      month: 'short',
-      day: 'numeric',
-    });
+    return date.toLocaleDateString('fil-PH', { month: 'short', day: 'numeric' });
   };
 
   const isExpiringSoon = (expiresAt: string) => {
     if (!expiresAt) return false;
     const diff = new Date(expiresAt).getTime() - Date.now();
-    return diff < 3 * 24 * 60 * 60 * 1000; // 3 days
+    return diff < 3 * 24 * 60 * 60 * 1000;
   };
 
   return (
@@ -109,12 +85,21 @@ export default function FeedScreen() {
         ))}
       </ScrollView>
 
+      {/* Offline indicator */}
+      {isFromCache && (
+        <View style={styles.cacheBar}>
+          <Text style={styles.cacheText}>
+            📶 Offline mode — showing cached data
+          </Text>
+        </View>
+      )}
+
       {/* Announcements list */}
       {loading ? (
         <View style={styles.center}>
           <ActivityIndicator color={colors.primary} size="large" />
         </View>
-      ) : announcements.length === 0 ? (
+      ) : !announcements || announcements.length === 0 ? (
         <View style={styles.center}>
           <Text style={styles.emptyText}>Walang balita ngayon</Text>
           <Text style={styles.emptySubtext}>Subukan ulit mamaya</Text>
@@ -125,16 +110,14 @@ export default function FeedScreen() {
           showsVerticalScrollIndicator={false}
           refreshControl={
             <RefreshControl
-              refreshing={refreshing}
-              onRefresh={handleRefresh}
+              refreshing={false}
+              onRefresh={refresh}
               tintColor={colors.primary}
             />
           }
         >
           {announcements.map(a => (
             <Card key={a.id}>
-
-              {/* Top row */}
               <View style={styles.topRow}>
                 <Badge
                   label={a.category || 'Balita'}
@@ -142,30 +125,17 @@ export default function FeedScreen() {
                 />
                 <Text style={styles.date}>{formatDate(a.createdAt)}</Text>
               </View>
-
-              {/* Title */}
               <Text style={styles.announcementTitle}>{a.title}</Text>
-
-              {/* Body */}
               {a.body && (
-                <Text style={styles.body} numberOfLines={3}>
-                  {a.body}
-                </Text>
+                <Text style={styles.body} numberOfLines={3}>{a.body}</Text>
               )}
-
-              {/* Footer */}
               <View style={styles.footer}>
-                {a.organization && (
-                  <Text style={styles.org}>🏢 {a.organization}</Text>
-                )}
-                {a.barangay && (
-                  <Text style={styles.org}>📍 {a.barangay}</Text>
-                )}
+                {a.organization && <Text style={styles.org}>🏢 {a.organization}</Text>}
+                {a.barangay && <Text style={styles.org}>📍 {a.barangay}</Text>}
                 {isExpiringSoon(a.expiresAt) && (
                   <Badge label="Malapit matapos" variant="warning" />
                 )}
               </View>
-
             </Card>
           ))}
           <View style={{ height: spacing.xxl }} />
@@ -176,10 +146,7 @@ export default function FeedScreen() {
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: colors.gray50,
-  },
+  container: { flex: 1, backgroundColor: colors.gray50 },
   header: {
     padding: spacing.xl,
     paddingTop: 60,
@@ -226,6 +193,16 @@ const styles = StyleSheet.create({
     fontWeight: typography.fontWeights.medium,
   },
   categoryTextActive: { color: colors.white },
+  cacheBar: {
+    backgroundColor: colors.warningLight,
+    padding: spacing.sm,
+    alignItems: 'center',
+  },
+  cacheText: {
+    fontSize: typography.fontSizes.xs,
+    color: colors.warning,
+    fontWeight: typography.fontWeights.medium,
+  },
   list: { flex: 1, padding: spacing.lg },
   center: {
     flex: 1,
@@ -248,10 +225,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     marginBottom: spacing.sm,
   },
-  date: {
-    fontSize: typography.fontSizes.xs,
-    color: colors.gray400,
-  },
+  date: { fontSize: typography.fontSizes.xs, color: colors.gray400 },
   announcementTitle: {
     fontSize: typography.fontSizes.md,
     fontWeight: typography.fontWeights.bold,
@@ -273,8 +247,5 @@ const styles = StyleSheet.create({
     paddingTop: spacing.sm,
     marginTop: spacing.xs,
   },
-  org: {
-    fontSize: typography.fontSizes.xs,
-    color: colors.gray400,
-  },
+  org: { fontSize: typography.fontSizes.xs, color: colors.gray400 },
 });

@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import {
   View, Text, StyleSheet, ScrollView,
   TouchableOpacity, RefreshControl, ActivityIndicator,
@@ -6,7 +6,7 @@ import {
 } from 'react-native';
 import { colors, typography, spacing } from '../../theme';
 import { Card, Badge } from '../../components';
-import api from '../../lib/api';
+import { useCachedFetch } from '../../lib/useCachedFetch';
 
 interface ServiceCenter {
   id: number;
@@ -30,34 +30,13 @@ const CATEGORY_ICONS: Record<string, string> = {
 };
 
 export default function ServicesScreen() {
-  const [services, setServices] = useState<ServiceCenter[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [refreshing, setRefreshing] = useState(false);
   const [selectedCategory, setSelectedCategory] = useState('Lahat');
 
-  useEffect(() => {
-    fetchServices();
-  }, [selectedCategory]);
-
-  const fetchServices = async () => {
-    try {
-      setLoading(true);
-      const params: any = {};
-      if (selectedCategory !== 'Lahat') params.category = selectedCategory;
-      const response = await api.get('/services', { params });
-      setServices(response.data);
-    } catch (err) {
-      console.log('Error fetching services:', err);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const handleRefresh = async () => {
-    setRefreshing(true);
-    await fetchServices();
-    setRefreshing(false);
-  };
+  const { data: services, loading, refresh, isFromCache } =
+    useCachedFetch<ServiceCenter[]>(
+      '/services',
+      selectedCategory !== 'Lahat' ? { category: selectedCategory } : {}
+    );
 
   const handleCall = (contactInfo: string) => {
     if (!contactInfo) return;
@@ -100,12 +79,21 @@ export default function ServicesScreen() {
         ))}
       </ScrollView>
 
+      {/* Offline indicator */}
+      {isFromCache && (
+        <View style={styles.cacheBar}>
+          <Text style={styles.cacheText}>
+            📶 Offline mode — showing cached data
+          </Text>
+        </View>
+      )}
+
       {/* Services list */}
       {loading ? (
         <View style={styles.center}>
           <ActivityIndicator color={colors.primary} size="large" />
         </View>
-      ) : services.length === 0 ? (
+      ) : !services || services.length === 0 ? (
         <View style={styles.center}>
           <Text style={styles.emptyText}>Walang serbisyo ngayon</Text>
           <Text style={styles.emptySubtext}>Subukan ulit mamaya</Text>
@@ -116,43 +104,29 @@ export default function ServicesScreen() {
           showsVerticalScrollIndicator={false}
           refreshControl={
             <RefreshControl
-              refreshing={refreshing}
-              onRefresh={handleRefresh}
+              refreshing={false}
+              onRefresh={refresh}
               tintColor={colors.primary}
             />
           }
         >
           {services.map(s => (
             <Card key={s.id}>
-
-              {/* Top row */}
               <View style={styles.topRow}>
-                <Text style={styles.icon}>
-                  {CATEGORY_ICONS[s.category] || '🏢'}
-                </Text>
+                <Text style={styles.icon}>{CATEGORY_ICONS[s.category] || '🏢'}</Text>
                 <View style={styles.topInfo}>
                   <Badge label={s.category} variant="primary" />
-                  {s.hours && (
-                    <Text style={styles.hours}>🕐 {s.hours}</Text>
-                  )}
+                  {s.hours && <Text style={styles.hours}>🕐 {s.hours}</Text>}
                 </View>
               </View>
-
-              {/* Address */}
               {s.address && (
                 <Text style={styles.address}>📍 {s.address}</Text>
               )}
-
-              {/* Eligibility */}
               {s.eligibilityNotes && (
                 <View style={styles.eligibility}>
-                  <Text style={styles.eligibilityText}>
-                    ✅ {s.eligibilityNotes}
-                  </Text>
+                  <Text style={styles.eligibilityText}>✅ {s.eligibilityNotes}</Text>
                 </View>
               )}
-
-              {/* Footer */}
               {s.contactInfo && (
                 <TouchableOpacity
                   style={styles.callBtn}
@@ -161,7 +135,6 @@ export default function ServicesScreen() {
                   <Text style={styles.callText}>📞 Tumawag — {s.contactInfo}</Text>
                 </TouchableOpacity>
               )}
-
             </Card>
           ))}
           <View style={{ height: spacing.xxl }} />
@@ -172,10 +145,7 @@ export default function ServicesScreen() {
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: colors.gray50,
-  },
+  container: { flex: 1, backgroundColor: colors.gray50 },
   header: {
     padding: spacing.xl,
     paddingTop: 60,
@@ -222,6 +192,16 @@ const styles = StyleSheet.create({
     fontWeight: typography.fontWeights.medium,
   },
   categoryTextActive: { color: colors.white },
+  cacheBar: {
+    backgroundColor: colors.warningLight,
+    padding: spacing.sm,
+    alignItems: 'center',
+  },
+  cacheText: {
+    fontSize: typography.fontSizes.xs,
+    color: colors.warning,
+    fontWeight: typography.fontWeights.medium,
+  },
   list: { flex: 1, padding: spacing.lg },
   center: {
     flex: 1,
@@ -246,10 +226,7 @@ const styles = StyleSheet.create({
   },
   icon: { fontSize: 32 },
   topInfo: { gap: spacing.xs, flex: 1 },
-  hours: {
-    fontSize: typography.fontSizes.sm,
-    color: colors.gray600,
-  },
+  hours: { fontSize: typography.fontSizes.sm, color: colors.gray600 },
   address: {
     fontSize: typography.fontSizes.sm,
     color: colors.gray600,
