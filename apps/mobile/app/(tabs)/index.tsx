@@ -81,7 +81,10 @@ export default function HomeScreen() {
         </View>
 
         {/* Emergency Banner */}
-        <TouchableOpacity style={styles.emergencyBanner}>
+        <TouchableOpacity
+          style={styles.emergencyBanner}
+          onPress={() => router.push('/emergency')}
+        >
           <Text style={styles.emergencyIcon}>🚨</Text>
           <View>
             <Text style={styles.emergencyTitle}>Emergency Hotlines</Text>
