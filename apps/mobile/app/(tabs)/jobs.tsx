@@ -4,6 +4,8 @@ import {
   TouchableOpacity, RefreshControl, ActivityIndicator,
   Modal
 } from 'react-native';
+import { router } from 'expo-router';
+import { Ionicons } from '@expo/vector-icons';
 import { colors, typography, spacing } from '../../theme';
 import { Card, Badge, Input } from '../../components';
 import { useCachedFetch } from '../../lib/useCachedFetch';
@@ -79,8 +81,19 @@ export default function JobsScreen() {
 
       {/* Header */}
       <View style={styles.header}>
-        <Text style={styles.title}>Mga Trabaho</Text>
-        <Text style={styles.subtitle}>Mag-apply nang walang resume</Text>
+        <View style={styles.headerRow}>
+          <View>
+            <Text style={styles.title}>Mga Trabaho</Text>
+            <Text style={styles.subtitle}>Mag-apply nang walang resume</Text>
+          </View>
+          <TouchableOpacity
+            style={styles.postBtn}
+            onPress={() => router.push('/post-job')}
+          >
+            <Ionicons name="add-circle" size={20} color={colors.white} />
+            <Text style={styles.postBtnText}>Mag-post</Text>
+          </TouchableOpacity>
+        </View>
       </View>
 
       {/* Search */}
@@ -90,6 +103,7 @@ export default function JobsScreen() {
           value={search}
           onChangeText={setSearch}
           onSubmitEditing={refresh}
+          containerStyle={{ marginBottom: 0 }}
         />
       </View>
 
@@ -151,51 +165,66 @@ export default function JobsScreen() {
           }
         >
           {jobs.map(job => (
-            <Card key={job.id}>
-              <View style={styles.jobHeader}>
-                <Text style={styles.jobTitle}>{job.title}</Text>
-                <Badge
-                  label={job.status === 'OPEN' ? 'Bukas' : 'Sarado'}
-                  variant={job.status === 'OPEN' ? 'success' : 'neutral'}
-                />
-              </View>
+            <TouchableOpacity
+              key={job.id}
+              activeOpacity={0.8}
+              onPress={() => router.push({
+                pathname: '/job-detail',
+                params: { id: job.id }
+              })}
+            >
+              <Card>
+                <View style={styles.jobHeader}>
+                  <Text style={styles.jobTitle}>{job.title}</Text>
+                  <Badge
+                    label={job.status === 'OPEN' ? 'Bukas' : 'Sarado'}
+                    variant={job.status === 'OPEN' ? 'success' : 'neutral'}
+                  />
+                </View>
 
-              <View style={styles.jobMeta}>
-                {job.pay && <Text style={styles.metaText}>💰 {job.pay}</Text>}
-                {job.location && <Text style={styles.metaText}>📍 {job.location}</Text>}
-                {job.category && <Text style={styles.metaText}>🏷 {job.category}</Text>}
-              </View>
+                <View style={styles.jobMeta}>
+                  {job.pay && <Text style={styles.metaText}>💰 {job.pay}</Text>}
+                  {job.location && <Text style={styles.metaText}>📍 {job.location}</Text>}
+                  {job.category && <Text style={styles.metaText}>🏷 {job.category}</Text>}
+                </View>
 
-              <View style={styles.jobFooter}>
-                <Text style={styles.appCount}>
-                  {job.applicationCount} nag-apply
-                </Text>
+                <View style={styles.jobFooter}>
+                  <Text style={styles.appCount}>
+                    {job.applicationCount} nag-apply
+                  </Text>
+                  <TouchableOpacity
+                    onPress={(e) => {
+                      e.stopPropagation();
+                      handleApply(job.id);
+                    }}
+                    disabled={applying === job.id || appliedJobs.includes(job.id)}
+                    style={[
+                      styles.applyBtn,
+                      appliedJobs.includes(job.id) && styles.applyBtnDone
+                    ]}
+                  >
+                    {applying === job.id ? (
+                      <ActivityIndicator color={colors.white} size="small" />
+                    ) : (
+                      <Text style={styles.applyText}>
+                        {appliedJobs.includes(job.id) ? 'Nag-apply na ✓' : 'Mag-apply'}
+                      </Text>
+                    )}
+                  </TouchableOpacity>
+                </View>
+
+                {/* Report button */}
                 <TouchableOpacity
-                  onPress={() => handleApply(job.id)}
-                  disabled={applying === job.id || appliedJobs.includes(job.id)}
-                  style={[
-                    styles.applyBtn,
-                    appliedJobs.includes(job.id) && styles.applyBtnDone
-                  ]}
+                  onPress={(e) => {
+                    e.stopPropagation();
+                    setReporting(job.id);
+                  }}
+                  style={styles.reportBtn}
                 >
-                  {applying === job.id ? (
-                    <ActivityIndicator color={colors.white} size="small" />
-                  ) : (
-                    <Text style={styles.applyText}>
-                      {appliedJobs.includes(job.id) ? 'Nag-apply na ✓' : 'Mag-apply'}
-                    </Text>
-                  )}
+                  <Text style={styles.reportText}>🚩 I-report</Text>
                 </TouchableOpacity>
-              </View>
-
-              {/* Report button */}
-              <TouchableOpacity
-                onPress={() => setReporting(job.id)}
-                style={styles.reportBtn}
-              >
-                <Text style={styles.reportText}>🚩 I-report</Text>
-              </TouchableOpacity>
-            </Card>
+              </Card>
+            </TouchableOpacity>
           ))}
           <View style={{ height: spacing.xxl }} />
         </ScrollView>
@@ -280,22 +309,43 @@ export default function JobsScreen() {
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: colors.gray50 },
   header: {
-    padding: spacing.xl,
+    padding: spacing.lg,
     paddingTop: 60,
+    paddingBottom: spacing.md,
     backgroundColor: colors.primary,
   },
+  headerRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
   title: {
-    fontSize: typography.fontSizes.xxl,
+    fontSize: typography.fontSizes.xl,
     fontWeight: typography.fontWeights.bold,
     color: colors.white,
-    marginBottom: spacing.xs,
   },
   subtitle: {
-    fontSize: typography.fontSizes.sm,
+    fontSize: typography.fontSizes.xs,
     color: colors.primaryLight,
+    marginTop: 2,
+  },
+  postBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    backgroundColor: colors.primaryDark,
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.sm,
+    borderRadius: 999,
+  },
+  postBtnText: {
+    fontSize: typography.fontSizes.sm,
+    color: colors.white,
+    fontWeight: typography.fontWeights.medium,
   },
   searchWrap: {
-    padding: spacing.lg,
+    paddingHorizontal: spacing.lg,
+    paddingTop: spacing.sm,
     paddingBottom: 0,
     backgroundColor: colors.white,
   },

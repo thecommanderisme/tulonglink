@@ -1,0 +1,273 @@
+import { useState } from 'react';
+import {
+  View, Text, StyleSheet, ScrollView,
+  TouchableOpacity, ActivityIndicator, Alert
+} from 'react-native';
+import { router, useLocalSearchParams } from 'expo-router';
+import { Ionicons } from '@expo/vector-icons';
+import { colors, typography, spacing } from '../theme';
+import { Badge, Button } from '../components';
+import { useCachedFetch } from '../lib/useCachedFetch';
+import api from '../lib/api';
+
+interface Job {
+  id: number;
+  title: string;
+  category: string;
+  pay: string;
+  location: string;
+  status: string;
+  postedBy: string;
+  createdAt: string;
+  applicationCount: number;
+}
+
+export default function JobDetailScreen() {
+  const { id } = useLocalSearchParams<{ id: string }>();
+  const [applying, setApplying] = useState(false);
+  const [applied, setApplied] = useState(false);
+
+  const { data: job, loading } = useCachedFetch<Job>(`/jobs/${id}`);
+
+  const handleApply = async () => {
+    setApplying(true);
+    try {
+      await api.post(`/jobs/${id}/apply`);
+      setApplied(true);
+      Alert.alert(
+        'Nag-apply ka na! ✅',
+        'Makikipag-ugnayan sa iyo ang employer.',
+        [{ text: 'OK' }]
+      );
+    } catch (err: any) {
+      const message = err.response?.data?.message || 'Hindi ma-apply. Subukan ulit.';
+      Alert.alert('Error', message);
+    } finally {
+      setApplying(false);
+    }
+  };
+
+  if (loading) {
+    return (
+      <View style={styles.center}>
+        <ActivityIndicator color={colors.primary} size="large" />
+      </View>
+    );
+  }
+
+  if (!job) {
+    return (
+      <View style={styles.center}>
+        <Text style={styles.errorText}>Hindi mahanap ang trabaho</Text>
+        <Button label="Bumalik" onPress={() => router.back()} />
+      </View>
+    );
+  }
+
+  return (
+    <View style={styles.container}>
+      <ScrollView showsVerticalScrollIndicator={false}>
+
+        {/* Header */}
+        <View style={styles.header}>
+          <TouchableOpacity
+            onPress={() => router.back()}
+            style={styles.backBtn}
+          >
+            <Ionicons name="arrow-back" size={24} color={colors.white} />
+          </TouchableOpacity>
+          <Text style={styles.headerTitle}>Detalye ng Trabaho</Text>
+        </View>
+
+        {/* Job Info */}
+        <View style={styles.jobCard}>
+          <View style={styles.jobHeader}>
+            <Text style={styles.jobTitle}>{job.title}</Text>
+            <Badge
+              label={job.status === 'OPEN' ? 'Bukas' : 'Sarado'}
+              variant={job.status === 'OPEN' ? 'success' : 'neutral'}
+            />
+          </View>
+
+          <View style={styles.metaList}>
+            {job.pay && (
+              <View style={styles.metaRow}>
+                <Ionicons name="cash-outline" size={18} color={colors.primary} />
+                <Text style={styles.metaText}>{job.pay}</Text>
+              </View>
+            )}
+            {job.location && (
+              <View style={styles.metaRow}>
+                <Ionicons name="location-outline" size={18} color={colors.primary} />
+                <Text style={styles.metaText}>{job.location}</Text>
+              </View>
+            )}
+            {job.category && (
+              <View style={styles.metaRow}>
+                <Ionicons name="pricetag-outline" size={18} color={colors.primary} />
+                <Text style={styles.metaText}>{job.category}</Text>
+              </View>
+            )}
+            <View style={styles.metaRow}>
+              <Ionicons name="people-outline" size={18} color={colors.primary} />
+              <Text style={styles.metaText}>{job.applicationCount} nag-apply na</Text>
+            </View>
+            {job.postedBy && (
+              <View style={styles.metaRow}>
+                <Ionicons name="person-outline" size={18} color={colors.primary} />
+                <Text style={styles.metaText}>In-post ni {job.postedBy}</Text>
+              </View>
+            )}
+          </View>
+        </View>
+
+        {/* Anti-scam Warning */}
+        <View style={styles.scamWarning}>
+          <View style={styles.scamHeader}>
+            <Ionicons name="warning-outline" size={20} color={colors.warning} />
+            <Text style={styles.scamTitle}>Mag-ingat sa Scam!</Text>
+          </View>
+          <Text style={styles.scamText}>
+            ⚠️ Huwag magbayad ng kahit anong halaga para makakuha ng trabaho.
+          </Text>
+          <Text style={styles.scamText}>
+            ⚠️ Huwag ibigay ang iyong personal na impormasyon bago makapag-usap sa employer.
+          </Text>
+          <Text style={styles.scamText}>
+            ⚠️ Kung may hinihingi silang bayad bago ka magtrabaho — SCAM iyan!
+          </Text>
+          <TouchableOpacity
+            style={styles.reportScamBtn}
+            onPress={() => router.back()}
+          >
+            <Text style={styles.reportScamText}>🚩 I-report ang Job Post</Text>
+          </TouchableOpacity>
+        </View>
+
+        <View style={{ height: 100 }} />
+      </ScrollView>
+
+      {/* Apply Button */}
+      {job.status === 'OPEN' && (
+        <View style={styles.applyBar}>
+          <Button
+            label={applied ? 'Nag-apply na ✓' : applying ? 'Nag-aapply...' : 'Mag-apply Ngayon'}
+            onPress={handleApply}
+            disabled={applied || applying}
+            loading={applying}
+            style={applied ? styles.appliedBtn : undefined}
+          />
+        </View>
+      )}
+    </View>
+  );
+}
+
+const styles = StyleSheet.create({
+  container: { flex: 1, backgroundColor: colors.gray50 },
+  center: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    gap: spacing.md,
+    padding: spacing.xl,
+  },
+  errorText: {
+    fontSize: typography.fontSizes.lg,
+    color: colors.gray600,
+  },
+  header: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: spacing.xl,
+    paddingTop: 60,
+    backgroundColor: colors.primary,
+    gap: spacing.md,
+  },
+  backBtn: { padding: spacing.xs },
+  headerTitle: {
+    fontSize: typography.fontSizes.lg,
+    fontWeight: typography.fontWeights.bold,
+    color: colors.white,
+  },
+  jobCard: {
+    backgroundColor: colors.white,
+    margin: spacing.lg,
+    borderRadius: 12,
+    padding: spacing.xl,
+    borderWidth: 0.5,
+    borderColor: colors.gray200,
+  },
+  jobHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'flex-start',
+    marginBottom: spacing.lg,
+  },
+  jobTitle: {
+    fontSize: typography.fontSizes.xl,
+    fontWeight: typography.fontWeights.bold,
+    color: colors.gray900,
+    flex: 1,
+    marginRight: spacing.md,
+  },
+  metaList: { gap: spacing.md },
+  metaRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.sm,
+  },
+  metaText: {
+    fontSize: typography.fontSizes.md,
+    color: colors.gray600,
+  },
+  scamWarning: {
+    backgroundColor: colors.warningLight,
+    margin: spacing.lg,
+    marginTop: 0,
+    borderRadius: 12,
+    padding: spacing.lg,
+    borderWidth: 1,
+    borderColor: colors.warning,
+    gap: spacing.sm,
+  },
+  scamHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.sm,
+    marginBottom: spacing.xs,
+  },
+  scamTitle: {
+    fontSize: typography.fontSizes.md,
+    fontWeight: typography.fontWeights.bold,
+    color: colors.warning,
+  },
+  scamText: {
+    fontSize: typography.fontSizes.sm,
+    color: colors.gray700,
+    lineHeight: 20,
+  },
+  reportScamBtn: {
+    marginTop: spacing.sm,
+    alignItems: 'center',
+    padding: spacing.sm,
+  },
+  reportScamText: {
+    fontSize: typography.fontSizes.sm,
+    color: colors.danger,
+    fontWeight: typography.fontWeights.medium,
+  },
+  applyBar: {
+    position: 'absolute',
+    bottom: 0,
+    left: 0,
+    right: 0,
+    backgroundColor: colors.white,
+    padding: spacing.lg,
+    borderTopWidth: 0.5,
+    borderTopColor: colors.gray200,
+  },
+  appliedBtn: {
+    backgroundColor: colors.success,
+  },
+});

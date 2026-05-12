@@ -1,79 +1,50 @@
-import axios from 'axios';
 import * as SecureStore from 'expo-secure-store';
-import { refreshAccessToken } from './auth';
 
-const BASE_URL = 'https://audacity-bobbed-gratify.ngrok-free.dev';
+export interface AuthResponse {
+  token: string;
+  role: string;
+  userId: number;
+  message: string;
+  refreshToken: string;
+}
 
-const api = axios.create({
-  baseURL: BASE_URL,
-  headers: {
-    'Content-Type': 'application/json',
-    'ngrok-skip-browser-warning': 'true',
-  },
-  timeout: 30000,
-});
+const JWT_KEY = 'jwt_token';
+const REFRESH_KEY = 'refresh_token';
 
-console.log('API BASE_URL:', BASE_URL);
-
-// Attach JWT token to every request
-api.interceptors.request.use(async (config) => {
-  const token = await SecureStore.getItemAsync('jwt_token');
-  if (token) {
-    config.headers.Authorization = `Bearer ${token}`;
-  }
-  return config;
-});
-
-// Auto-refresh on 401
-let isRefreshing = false;
-let failedQueue: any[] = [];
-
-const processQueue = (error: any, token: string | null = null) => {
-  failedQueue.forEach(prom => {
-    if (error) prom.reject(error);
-    else prom.resolve(token);
-  });
-  failedQueue = [];
+// Save both tokens
+export const saveTokens = async (token: string, refreshToken: string) => {
+  await SecureStore.setItemAsync(JWT_KEY, token);
+  await SecureStore.setItemAsync(REFRESH_KEY, refreshToken);
 };
 
-api.interceptors.response.use(
-  (response) => response,
-  async (error) => {
-    const originalRequest = error.config;
+// Save single token (backward compatibility)
+export const saveToken = async (token: string) => {
+  await SecureStore.setItemAsync(JWT_KEY, token);
+};
 
-    if (error.response?.status === 401 && !originalRequest._retry) {
-      if (isRefreshing) {
-        return new Promise((resolve, reject) => {
-          failedQueue.push({ resolve, reject });
-        }).then(token => {
-          originalRequest.headers.Authorization = `Bearer ${token}`;
-          return api(originalRequest);
-        }).catch(err => Promise.reject(err));
-      }
+// Get JWT token
+export const getToken = async () => {
+  return await SecureStore.getItemAsync(JWT_KEY);
+};
 
-      originalRequest._retry = true;
-      isRefreshing = true;
+// Get refresh token
+export const getRefreshToken = async () => {
+  return await SecureStore.getItemAsync(REFRESH_KEY);
+};
 
-      try {
-        const newToken = await refreshAccessToken();
-        if (newToken) {
-          processQueue(null, newToken);
-          originalRequest.headers.Authorization = `Bearer ${newToken}`;
-          return api(originalRequest);
-        } else {
-          processQueue(error, null);
-          return Promise.reject(error);
-        }
-      } catch (refreshError) {
-        processQueue(refreshError, null);
-        return Promise.reject(refreshError);
-      } finally {
-        isRefreshing = false;
-      }
-    }
+// Remove both tokens (logout)
+export const removeToken = async () => {
+  await SecureStore.deleteItemAsync(JWT_KEY);
+  await SecureStore.deleteItemAsync(REFRESH_KEY);
+};
 
-    return Promise.reject(error);
-  }
-);
+// Check if user is logged in
+export const isLoggedIn = async () => {
+  const token = await getToken();
+  return !!token;
+};
 
-export default api;
+// Logout
+export const logout = async () => {
+  await removeToken();
+};

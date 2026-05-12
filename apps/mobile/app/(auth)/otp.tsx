@@ -1,10 +1,10 @@
 import { useState } from 'react';
-import { View, Text, StyleSheet } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
 import { router, useLocalSearchParams } from 'expo-router';
 import { useTranslation } from 'react-i18next';
 import { Button, Input } from '../../components';
 import { colors, typography, spacing } from '../../theme';
-import { verifyOtp, sendOtp } from '../../lib/auth';
+import { verifyOtp, sendOtp } from '../../lib/authApi';
 
 export default function OtpScreen() {
   const { t } = useTranslation();
@@ -36,6 +36,7 @@ export default function OtpScreen() {
     try {
       await sendOtp(phone);
       setError('');
+      setOtp('');
     } catch (err: any) {
       setError(t('phone.apiError'));
     } finally {
@@ -45,6 +46,15 @@ export default function OtpScreen() {
 
   return (
     <View style={styles.container}>
+
+      {/* Back button */}
+      <TouchableOpacity
+        onPress={() => router.back()}
+        style={styles.backBtn}
+      >
+        <Text style={styles.backText}>← Bumalik</Text>
+      </TouchableOpacity>
+
       <View style={styles.header}>
         <Text style={styles.title}>{t('otp.title')}</Text>
         <Text style={styles.subtitle}>{t('otp.subtitle')} {phone}</Text>
@@ -84,9 +94,19 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: colors.white,
     padding: spacing.xl,
-    paddingTop: 80,
+    paddingTop: 60,
   },
-  header: { marginBottom: spacing.xxl },
+  backBtn: {
+    marginBottom: spacing.xl,
+  },
+  backText: {
+    fontSize: typography.fontSizes.md,
+    color: colors.primary,
+    fontWeight: typography.fontWeights.medium,
+  },
+  header: {
+    marginBottom: spacing.xxl,
+  },
   title: {
     fontSize: typography.fontSizes.xxl,
     fontWeight: typography.fontWeights.bold,

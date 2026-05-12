@@ -1,30 +1,39 @@
 import { useState } from 'react';
 import {
   View, Text, StyleSheet, ScrollView,
-  TouchableOpacity, Modal, ActivityIndicator
+  TouchableOpacity, Modal, ActivityIndicator,
+  RefreshControl
 } from 'react-native';
 import { router } from 'expo-router';
 import { useTranslation } from 'react-i18next';
 import { colors, typography, spacing } from '../../theme';
 import { Card, Badge, Input } from '../../components';
 import { logout } from '../../lib/auth';
+import { useCachedFetch } from '../../lib/useCachedFetch';
 import api from '../../lib/api';
 
-const SAMPLE_JOBS = [
-  { id: 1, title: 'Labandera / Plantsa', pay: '₱300/araw', location: 'Barangay 123' },
-  { id: 2, title: 'Tagaluto', pay: '₱400/araw', location: 'Barangay 456' },
-  { id: 3, title: 'Tanod ng Gabi', pay: '₱500/gabi', location: 'Barangay 789' },
-];
+interface Job {
+  id: number;
+  title: string;
+  pay: string;
+  location: string;
+  category: string;
+  applicationCount: number;
+}
 
-const SAMPLE_ANNOUNCEMENTS = [
-  { id: 1, title: 'Libreng Medical Mission', category: 'Kalusugan', date: 'Abr 28' },
-  { id: 2, title: 'Ayuda Distribution', category: 'Tulong', date: 'Abr 30' },
-];
+interface Announcement {
+  id: number;
+  title: string;
+  category: string;
+  createdAt: string;
+}
 
-const SAMPLE_SERVICES = [
-  { id: 1, name: 'Ospital ng Maynila', category: 'Ospital', hours: '24/7' },
-  { id: 2, name: 'DSWD Office', category: 'Tulong', hours: '8am-5pm' },
-];
+interface ServiceCenter {
+  id: number;
+  category: string;
+  hours: string;
+  address: string;
+}
 
 export default function HomeScreen() {
   const { t } = useTranslation();
@@ -34,6 +43,21 @@ export default function HomeScreen() {
   const [helpPrivacy, setHelpPrivacy] = useState('PUBLIC');
   const [submitting, setSubmitting] = useState(false);
   const [submitted, setSubmitted] = useState(false);
+
+  const { data: jobs, refresh: refreshJobs } =
+    useCachedFetch<Job[]>('/jobs');
+  const { data: announcements, refresh: refreshAnnouncements } =
+    useCachedFetch<Announcement[]>('/announcements');
+  const { data: services, refresh: refreshServices } =
+    useCachedFetch<ServiceCenter[]>('/services');
+
+  const handleRefresh = async () => {
+    await Promise.all([
+      refreshJobs(),
+      refreshAnnouncements(),
+      refreshServices()
+    ]);
+  };
 
   const handleLogout = async () => {
     await logout();
@@ -65,10 +89,26 @@ export default function HomeScreen() {
     setHelpPrivacy('PUBLIC');
   };
 
+  const formatDate = (dateStr: string) => {
+    if (!dateStr) return '';
+    return new Date(dateStr).toLocaleDateString('fil-PH', {
+      month: 'short',
+      day: 'numeric',
+    });
+  };
+
   return (
     <View style={styles.container}>
-      <ScrollView showsVerticalScrollIndicator={false}>
-
+      <ScrollView
+        showsVerticalScrollIndicator={false}
+        refreshControl={
+          <RefreshControl
+            refreshing={false}
+            onRefresh={handleRefresh}
+            tintColor={colors.white}
+          />
+        }
+      >
         {/* Header */}
         <View style={styles.header}>
           <View>
@@ -86,9 +126,11 @@ export default function HomeScreen() {
           onPress={() => router.push('/emergency')}
         >
           <Text style={styles.emergencyIcon}>🚨</Text>
-          <View>
+          <View style={styles.emergencyTextWrap}>
             <Text style={styles.emergencyTitle}>Emergency Hotlines</Text>
-            <Text style={styles.emergencySubtitle}>Tap para makita ang mga hotline</Text>
+            <Text style={styles.emergencySubtitle}>
+              Tap para makita ang mga hotline
+            </Text>
           </View>
           <Text style={styles.emergencyArrow}>→</Text>
         </TouchableOpacity>
@@ -112,15 +154,32 @@ export default function HomeScreen() {
               <Text style={styles.seeAll}>Lahat →</Text>
             </TouchableOpacity>
           </View>
-          {SAMPLE_JOBS.map(job => (
-            <Card key={job.id}>
-              <Text style={styles.jobTitle}>{job.title}</Text>
-              <View style={styles.jobMeta}>
-                <Badge label={job.pay} variant="success" />
-                <Text style={styles.jobLocation}>📍 {job.location}</Text>
-              </View>
+          {!jobs || jobs.length === 0 ? (
+            <Card>
+              <Text style={styles.emptyText}>Walang trabaho ngayon</Text>
             </Card>
-          ))}
+          ) : (
+            jobs.slice(0, 3).map(job => (
+              <TouchableOpacity
+                key={job.id}
+                onPress={() => router.push({
+                  pathname: '/job-detail',
+                  params: { id: job.id }
+                })}
+                activeOpacity={0.8}
+              >
+                <Card>
+                  <Text style={styles.jobTitle}>{job.title}</Text>
+                  <View style={styles.jobMeta}>
+                    {job.pay && <Badge label={job.pay} variant="success" />}
+                    {job.location && (
+                      <Text style={styles.jobLocation}>📍 {job.location}</Text>
+                    )}
+                  </View>
+                </Card>
+              </TouchableOpacity>
+            ))
+          )}
         </View>
 
         {/* Announcements Section */}
@@ -131,17 +190,27 @@ export default function HomeScreen() {
               <Text style={styles.seeAll}>Lahat →</Text>
             </TouchableOpacity>
           </View>
-          {SAMPLE_ANNOUNCEMENTS.map(a => (
-            <Card key={a.id}>
-              <View style={styles.announcementRow}>
-                <View style={styles.announcementLeft}>
-                  <Text style={styles.announcementTitle}>{a.title}</Text>
-                  <Badge label={a.category} variant="primary" />
-                </View>
-                <Text style={styles.announcementDate}>{a.date}</Text>
-              </View>
+          {!announcements || announcements.length === 0 ? (
+            <Card>
+              <Text style={styles.emptyText}>Walang balita ngayon</Text>
             </Card>
-          ))}
+          ) : (
+            announcements.slice(0, 3).map(a => (
+              <Card key={a.id}>
+                <View style={styles.announcementRow}>
+                  <View style={styles.announcementLeft}>
+                    <Text style={styles.announcementTitle}>{a.title}</Text>
+                    {a.category && (
+                      <Badge label={a.category} variant="primary" />
+                    )}
+                  </View>
+                  <Text style={styles.announcementDate}>
+                    {formatDate(a.createdAt)}
+                  </Text>
+                </View>
+              </Card>
+            ))
+          )}
         </View>
 
         {/* Services Section */}
@@ -152,17 +221,27 @@ export default function HomeScreen() {
               <Text style={styles.seeAll}>Lahat →</Text>
             </TouchableOpacity>
           </View>
-          {SAMPLE_SERVICES.map(s => (
-            <Card key={s.id}>
-              <View style={styles.serviceRow}>
-                <View>
-                  <Text style={styles.serviceName}>{s.name}</Text>
-                  <Badge label={s.category} variant="neutral" />
-                </View>
-                <Text style={styles.serviceHours}>{s.hours}</Text>
-              </View>
+          {!services || services.length === 0 ? (
+            <Card>
+              <Text style={styles.emptyText}>Walang serbisyo ngayon</Text>
             </Card>
-          ))}
+          ) : (
+            services.slice(0, 3).map(s => (
+              <Card key={s.id}>
+                <View style={styles.serviceRow}>
+                  <View>
+                    <Text style={styles.serviceName}>
+                      {s.address || s.category}
+                    </Text>
+                    <Badge label={s.category} variant="neutral" />
+                  </View>
+                  {s.hours && (
+                    <Text style={styles.serviceHours}>{s.hours}</Text>
+                  )}
+                </View>
+              </Card>
+            ))
+          )}
         </View>
 
         <View style={{ height: spacing.xxl }} />
@@ -182,11 +261,16 @@ export default function HomeScreen() {
             {submitted ? (
               <View style={styles.successBox}>
                 <Text style={styles.successIcon}>✅</Text>
-                <Text style={styles.successText}>Natanggap ang iyong kahilingan!</Text>
+                <Text style={styles.successText}>
+                  Natanggap ang iyong kahilingan!
+                </Text>
                 <Text style={styles.successSubtext}>
                   Makikipag-ugnayan sa iyo ang aming team.
                 </Text>
-                <TouchableOpacity style={styles.doneBtn} onPress={handleCloseModal}>
+                <TouchableOpacity
+                  style={styles.doneBtn}
+                  onPress={handleCloseModal}
+                >
                   <Text style={styles.doneBtnText}>Tapos na</Text>
                 </TouchableOpacity>
               </View>
@@ -254,7 +338,10 @@ export default function HomeScreen() {
                     <Text style={styles.cancelText}>Kanselahin</Text>
                   </TouchableOpacity>
                   <TouchableOpacity
-                    style={[styles.submitBtn, (!helpType || submitting) && { opacity: 0.6 }]}
+                    style={[
+                      styles.submitBtn,
+                      (!helpType || submitting) && { opacity: 0.6 }
+                    ]}
                     onPress={handleSubmitHelp}
                     disabled={submitting || !helpType}
                   >
@@ -275,10 +362,7 @@ export default function HomeScreen() {
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: colors.gray50,
-  },
+  container: { flex: 1, backgroundColor: colors.gray50 },
   header: {
     flexDirection: 'row',
     justifyContent: 'space-between',
@@ -312,6 +396,7 @@ const styles = StyleSheet.create({
     gap: spacing.md,
   },
   emergencyIcon: { fontSize: 24 },
+  emergencyTextWrap: { flex: 1 },
   emergencyTitle: {
     fontSize: typography.fontSizes.md,
     fontWeight: typography.fontWeights.bold,
@@ -323,7 +408,6 @@ const styles = StyleSheet.create({
     marginTop: 2,
   },
   emergencyArrow: {
-    marginLeft: 'auto',
     color: colors.white,
     fontSize: typography.fontSizes.lg,
   },
@@ -363,6 +447,12 @@ const styles = StyleSheet.create({
     fontWeight: typography.fontWeights.bold,
     color: colors.white,
   },
+  emptyText: {
+    fontSize: typography.fontSizes.sm,
+    color: colors.gray400,
+    textAlign: 'center',
+    padding: spacing.sm,
+  },
   jobTitle: {
     fontSize: typography.fontSizes.md,
     fontWeight: typography.fontWeights.medium,
@@ -383,7 +473,7 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     alignItems: 'flex-start',
   },
-  announcementLeft: { gap: spacing.xs },
+  announcementLeft: { gap: spacing.xs, flex: 1 },
   announcementTitle: {
     fontSize: typography.fontSizes.md,
     fontWeight: typography.fontWeights.medium,

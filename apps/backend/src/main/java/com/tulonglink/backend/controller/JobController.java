@@ -1,5 +1,6 @@
 package com.tulonglink.backend.controller;
 
+import com.tulonglink.backend.dto.ApplicationResponse;
 import com.tulonglink.backend.dto.JobRequest;
 import com.tulonglink.backend.dto.JobResponse;
 import com.tulonglink.backend.service.JobService;
@@ -7,6 +8,7 @@ import jakarta.validation.Valid;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
+import com.tulonglink.backend.dto.ApplicationResponse;
 
 import java.util.List;
 
@@ -33,6 +35,12 @@ public class JobController {
             return ResponseEntity.ok(jobService.getJobsByCategory(category));
         }
         return ResponseEntity.ok(jobService.getAllJobs());
+    }
+
+    @GetMapping("/my-applications")
+    public ResponseEntity<List<ApplicationResponse>> getMyApplications(Authentication auth) {
+        Long userId = Long.parseLong(auth.getName());
+        return ResponseEntity.ok(jobService.getMyApplications(userId));
     }
 
     // GET /jobs/{id} — get single job

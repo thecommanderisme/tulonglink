@@ -4,7 +4,7 @@ import { router } from 'expo-router';
 import { useTranslation } from 'react-i18next';
 import { Button, Input } from '../../components';
 import { colors, typography, spacing } from '../../theme';
-import { sendOtp } from '../../lib/auth';
+import { verifyOtp, sendOtp } from '../../lib/authApi';
 
 export default function PhoneScreen() {
   const { t } = useTranslation();

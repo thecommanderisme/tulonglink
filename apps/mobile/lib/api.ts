@@ -1,6 +1,5 @@
 import axios from 'axios';
 import * as SecureStore from 'expo-secure-store';
-import { refreshAccessToken } from './auth';
 
 const BASE_URL = 'https://audacity-bobbed-gratify.ngrok-free.dev';
 
@@ -55,6 +54,8 @@ api.interceptors.response.use(
       isRefreshing = true;
 
       try {
+        // Import here to avoid circular dependency
+        const { refreshAccessToken } = await import('./authApi');
         const newToken = await refreshAccessToken();
         if (newToken) {
           processQueue(null, newToken);

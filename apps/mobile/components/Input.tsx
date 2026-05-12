@@ -5,19 +5,22 @@ import {
   TextInput,
   StyleSheet,
   TextInputProps,
+  ViewStyle,
 } from 'react-native';
 import { colors, typography, spacing } from '../theme';
 
 interface InputProps extends TextInputProps {
   label?: string;
   error?: string;
+  containerStyle?: ViewStyle;
 }
 
-export const Input = ({ label, error, ...props }: InputProps) => {
+
+export const Input = ({ label, error, containerStyle, ...props }: InputProps) => {
   const [focused, setFocused] = useState(false);
 
   return (
-    <View style={styles.container}>
+    <View style={[styles.container, containerStyle]}>
       {label && <Text style={styles.label}>{label}</Text>}
       <TextInput
         style={[

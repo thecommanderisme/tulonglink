@@ -1,5 +1,6 @@
 package com.tulonglink.backend.service;
 
+import com.tulonglink.backend.dto.ApplicationResponse;
 import com.tulonglink.backend.dto.JobRequest;
 import com.tulonglink.backend.dto.JobResponse;
 import com.tulonglink.backend.entity.Job;
@@ -77,6 +78,18 @@ public class JobService {
 
         Job saved = jobRepository.save(job);
         return toResponse(saved);
+    }
+
+    public List<ApplicationResponse> getMyApplications(Long userId) {
+        return jobApplicationRepository.findByUserId(userId)
+                .stream()
+                .map(app -> ApplicationResponse.builder()
+                        .id(app.getId())
+                        .status(app.getStatus())
+                        .appliedAt(app.getAppliedAt())
+                        .job(toResponse(app.getJob()))
+                        .build())
+                .collect(Collectors.toList());
     }
 
     // Apply for a job
