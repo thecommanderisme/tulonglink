@@ -1,61 +1,79 @@
+import axios from 'axios';
 import * as SecureStore from 'expo-secure-store';
-import api from './api';
+import { refreshAccessToken } from './auth';
 
-export interface AuthResponse {
-  token: string;
-  role: string;
-  userId: number;
-  message: string;
-}
+const BASE_URL = 'https://audacity-bobbed-gratify.ngrok-free.dev';
 
-export const saveToken = async (token: string) => {
-  await SecureStore.setItemAsync('jwt_token', token);
-};
+const api = axios.create({
+  baseURL: BASE_URL,
+  headers: {
+    'Content-Type': 'application/json',
+    'ngrok-skip-browser-warning': 'true',
+  },
+  timeout: 30000,
+});
 
-export const getToken = async () => {
-  return await SecureStore.getItemAsync('jwt_token');
-};
+console.log('API BASE_URL:', BASE_URL);
 
-export const removeToken = async () => {
-  await SecureStore.deleteItemAsync('jwt_token');
-};
-
-export const isLoggedIn = async () => {
-  const token = await getToken();
-  return !!token;
-};
-
-export const sendOtp = async (phone: string) => {
-  try {
-    const response = await api.post('/auth/send-otp', { phone });
-    console.log('sendOtp success:', response.data);
-    return response.data;
-  } catch (err: any) {
-    console.log('sendOtp error:', err.message);
-    console.log('sendOtp error response:', JSON.stringify(err.response?.data));
-    console.log('sendOtp status:', err.response?.status);
-    throw err;
+// Attach JWT token to every request
+api.interceptors.request.use(async (config) => {
+  const token = await SecureStore.getItemAsync('jwt_token');
+  if (token) {
+    config.headers.Authorization = `Bearer ${token}`;
   }
-};
+  return config;
+});
 
-export const verifyOtp = async (phone: string, otp: string) => {
-  const response = await api.post<AuthResponse>('/auth/verify-otp', {
-    phone,
-    otp,
+// Auto-refresh on 401
+let isRefreshing = false;
+let failedQueue: any[] = [];
+
+const processQueue = (error: any, token: string | null = null) => {
+  failedQueue.forEach(prom => {
+    if (error) prom.reject(error);
+    else prom.resolve(token);
   });
-  await saveToken(response.data.token);
-  return response.data;
+  failedQueue = [];
 };
 
-export const register = async (phone: string, role: string = 'RESIDENT') => {
-  const response = await api.post<AuthResponse>('/auth/register', {
-    phone,
-    role,
-  });
-  await saveToken(response.data.token);
-  return response.data;
-};
+api.interceptors.response.use(
+  (response) => response,
+  async (error) => {
+    const originalRequest = error.config;
 
-export const logout = async () => {
-  await removeToken();
-};
+    if (error.response?.status === 401 && !originalRequest._retry) {
+      if (isRefreshing) {
+        return new Promise((resolve, reject) => {
+          failedQueue.push({ resolve, reject });
+        }).then(token => {
+          originalRequest.headers.Authorization = `Bearer ${token}`;
+          return api(originalRequest);
+        }).catch(err => Promise.reject(err));
+      }
+
+      originalRequest._retry = true;
+      isRefreshing = true;
+
+      try {
+        const newToken = await refreshAccessToken();
+        if (newToken) {
+          processQueue(null, newToken);
+          originalRequest.headers.Authorization = `Bearer ${newToken}`;
+          return api(originalRequest);
+        } else {
+          processQueue(error, null);
+          return Promise.reject(error);
+        }
+      } catch (refreshError) {
+        processQueue(refreshError, null);
+        return Promise.reject(refreshError);
+      } finally {
+        isRefreshing = false;
+      }
+    }
+
+    return Promise.reject(error);
+  }
+);
+
+export default api;

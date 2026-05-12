@@ -2,6 +2,7 @@ package com.tulonglink.backend.service;
 
 import com.tulonglink.backend.dto.AuthRequest;
 import com.tulonglink.backend.dto.AuthResponse;
+import com.tulonglink.backend.entity.RefreshToken;
 import com.tulonglink.backend.entity.User;
 import com.tulonglink.backend.repository.UserRepository;
 import com.tulonglink.backend.security.JwtUtil;
@@ -18,6 +19,7 @@ public class AuthService {
     private final UserRepository userRepository;
     private final JwtUtil jwtUtil;
     private final PasswordEncoder passwordEncoder;
+    private final RefreshTokenService refreshTokenService;
 
     // Temporary in-memory OTP store (we'll move to Redis later)
     private final Map<String, String> otpStore = new HashMap<>();
@@ -25,10 +27,12 @@ public class AuthService {
     public AuthService(
             UserRepository userRepository,
             JwtUtil jwtUtil,
-            PasswordEncoder passwordEncoder) {
+            PasswordEncoder passwordEncoder,
+            RefreshTokenService refreshTokenService) {
         this.userRepository = userRepository;
         this.jwtUtil = jwtUtil;
         this.passwordEncoder = passwordEncoder;
+        this.refreshTokenService = refreshTokenService;
     }
 
     // Register a new user
@@ -65,7 +69,8 @@ public class AuthService {
                 saved.getRole().name()
         );
 
-        return new AuthResponse(token, saved.getRole().name(), saved.getId(), "Registration successful");
+        String refreshToken = refreshTokenService.createRefreshToken(saved).getToken();
+        return new AuthResponse(token, saved.getRole().name(), saved.getId(), "Registration successful", refreshToken);
     }
 
     // Login with phone
@@ -83,7 +88,8 @@ public class AuthService {
                 user.getRole().name()
         );
 
-        return new AuthResponse(token, user.getRole().name(), user.getId(), "Login successful");
+        String refreshToken = refreshTokenService.createRefreshToken(user).getToken();
+        return new AuthResponse(token, user.getRole().name(), user.getId(), "Login successful", refreshToken);
     }
 
     // Generate and store OTP
@@ -130,6 +136,21 @@ public class AuthService {
                 user.getRole().name()
         );
 
-        return new AuthResponse(token, user.getRole().name(), user.getId(), "OTP verified successfully");
+        String refreshToken = refreshTokenService.createRefreshToken(user).getToken();
+        return new AuthResponse(token, user.getRole().name(), user.getId(), "OTP verified successfully", refreshToken);
+    }
+    
+    public AuthResponse refresh(String refreshToken) {
+        RefreshToken token = refreshTokenService.validateRefreshToken(refreshToken);
+        User user = token.getUser();
+
+        String newJwt = jwtUtil.generateToken(
+                user.getId().toString(),
+                user.getRole().name()
+        );
+
+        String newRefreshToken = refreshTokenService.createRefreshToken(user).getToken();
+
+        return new AuthResponse(newJwt, user.getRole().name(), user.getId(), "Token refreshed", newRefreshToken);
     }
 }
