@@ -1,7 +1,8 @@
 import { useState } from 'react';
 import {
   View, Text, StyleSheet, ScrollView,
-  TouchableOpacity, RefreshControl, ActivityIndicator
+  TouchableOpacity, RefreshControl, ActivityIndicator,
+  Modal
 } from 'react-native';
 import { colors, typography, spacing } from '../../theme';
 import { Card, Badge, Input } from '../../components';
@@ -26,12 +27,17 @@ export default function JobsScreen() {
   const [selectedCategory, setSelectedCategory] = useState('Lahat');
   const [applying, setApplying] = useState<number | null>(null);
   const [appliedJobs, setAppliedJobs] = useState<number[]>([]);
+  const [reporting, setReporting] = useState<number | null>(null);
+  const [reportReason, setReportReason] = useState('');
+  const [reportSubmitting, setReportSubmitting] = useState(false);
+  const [reportSuccess, setReportSuccess] = useState(false);
 
   const params: any = {};
   if (selectedCategory !== 'Lahat') params.category = selectedCategory;
   if (search) params.search = search;
 
-  const { data: jobs, loading, refresh, isFromCache } = useCachedFetch<Job[]>('/jobs', params);
+  const { data: jobs, loading, refresh, isFromCache } =
+    useCachedFetch<Job[]>('/jobs', params);
 
   const handleApply = async (jobId: number) => {
     try {
@@ -43,6 +49,29 @@ export default function JobsScreen() {
     } finally {
       setApplying(null);
     }
+  };
+
+  const handleReport = async () => {
+    if (!reportReason || !reporting) return;
+    setReportSubmitting(true);
+    try {
+      await api.post('/moderation/reports', {
+        contentType: 'JOB',
+        contentId: reporting,
+        reason: reportReason,
+      });
+      setReportSuccess(true);
+    } catch (err: any) {
+      console.log('Report error:', err.response?.data?.message);
+    } finally {
+      setReportSubmitting(false);
+    }
+  };
+
+  const handleCloseReport = () => {
+    setReporting(null);
+    setReportReason('');
+    setReportSuccess(false);
   };
 
   return (
@@ -158,11 +187,92 @@ export default function JobsScreen() {
                   )}
                 </TouchableOpacity>
               </View>
+
+              {/* Report button */}
+              <TouchableOpacity
+                onPress={() => setReporting(job.id)}
+                style={styles.reportBtn}
+              >
+                <Text style={styles.reportText}>🚩 I-report</Text>
+              </TouchableOpacity>
             </Card>
           ))}
           <View style={{ height: spacing.xxl }} />
         </ScrollView>
       )}
+
+      {/* Report Modal */}
+      <Modal
+        visible={reporting !== null}
+        animationType="slide"
+        transparent={true}
+        onRequestClose={handleCloseReport}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalContent}>
+            <Text style={styles.modalTitle}>I-report ang Job Post</Text>
+
+            {reportSuccess ? (
+              <View style={styles.successBox}>
+                <Text style={styles.successIcon}>✅</Text>
+                <Text style={styles.successText}>Natanggap ang iyong report!</Text>
+                <TouchableOpacity
+                  style={styles.doneBtn}
+                  onPress={handleCloseReport}
+                >
+                  <Text style={styles.doneBtnText}>Tapos na</Text>
+                </TouchableOpacity>
+              </View>
+            ) : (
+              <>
+                <Text style={styles.fieldLabel}>Dahilan ng report</Text>
+                <View style={styles.reasons}>
+                  {['SCAM', 'SPAM', 'INAPPROPRIATE', 'FAKE'].map(reason => (
+                    <TouchableOpacity
+                      key={reason}
+                      onPress={() => setReportReason(reason)}
+                      style={[
+                        styles.reasonBtn,
+                        reportReason === reason && styles.reasonBtnActive
+                      ]}
+                    >
+                      <Text style={[
+                        styles.reasonText,
+                        reportReason === reason && styles.reasonTextActive
+                      ]}>
+                        {reason}
+                      </Text>
+                    </TouchableOpacity>
+                  ))}
+                </View>
+
+                <View style={styles.modalButtons}>
+                  <TouchableOpacity
+                    style={styles.cancelBtn}
+                    onPress={handleCloseReport}
+                  >
+                    <Text style={styles.cancelText}>Kanselahin</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    style={[
+                      styles.submitBtn,
+                      (!reportReason || reportSubmitting) && { opacity: 0.6 }
+                    ]}
+                    disabled={!reportReason || reportSubmitting}
+                    onPress={handleReport}
+                  >
+                    {reportSubmitting ? (
+                      <ActivityIndicator color={colors.white} size="small" />
+                    ) : (
+                      <Text style={styles.submitText}>Isumite</Text>
+                    )}
+                  </TouchableOpacity>
+                </View>
+              </>
+            )}
+          </View>
+        </View>
+      </Modal>
     </View>
   );
 }
@@ -289,5 +399,112 @@ const styles = StyleSheet.create({
     fontSize: typography.fontSizes.sm,
     color: colors.white,
     fontWeight: typography.fontWeights.medium,
+  },
+  reportBtn: {
+    alignItems: 'center',
+    paddingTop: spacing.sm,
+    marginTop: spacing.xs,
+  },
+  reportText: {
+    fontSize: typography.fontSizes.xs,
+    color: colors.gray400,
+  },
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.5)',
+    justifyContent: 'flex-end',
+  },
+  modalContent: {
+    backgroundColor: colors.white,
+    borderTopLeftRadius: 20,
+    borderTopRightRadius: 20,
+    padding: spacing.xl,
+    maxHeight: '90%',
+  },
+  modalTitle: {
+    fontSize: typography.fontSizes.xl,
+    fontWeight: typography.fontWeights.bold,
+    color: colors.gray900,
+    marginBottom: spacing.lg,
+  },
+  fieldLabel: {
+    fontSize: typography.fontSizes.sm,
+    fontWeight: typography.fontWeights.medium,
+    color: colors.gray600,
+    marginBottom: spacing.sm,
+  },
+  reasons: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: spacing.sm,
+    marginBottom: spacing.lg,
+  },
+  reasonBtn: {
+    paddingHorizontal: spacing.lg,
+    paddingVertical: spacing.sm,
+    borderRadius: 999,
+    borderWidth: 1,
+    borderColor: colors.gray200,
+  },
+  reasonBtnActive: {
+    backgroundColor: colors.danger,
+    borderColor: colors.danger,
+  },
+  reasonText: {
+    fontSize: typography.fontSizes.sm,
+    color: colors.gray600,
+  },
+  reasonTextActive: { color: colors.white },
+  modalButtons: {
+    flexDirection: 'row',
+    gap: spacing.md,
+    marginTop: spacing.sm,
+  },
+  cancelBtn: {
+    flex: 1,
+    padding: spacing.md,
+    borderRadius: 10,
+    borderWidth: 1,
+    borderColor: colors.gray200,
+    alignItems: 'center',
+  },
+  cancelText: {
+    fontSize: typography.fontSizes.md,
+    color: colors.gray600,
+  },
+  submitBtn: {
+    flex: 1,
+    padding: spacing.md,
+    borderRadius: 10,
+    backgroundColor: colors.danger,
+    alignItems: 'center',
+  },
+  submitText: {
+    fontSize: typography.fontSizes.md,
+    color: colors.white,
+    fontWeight: typography.fontWeights.bold,
+  },
+  successBox: {
+    alignItems: 'center',
+    padding: spacing.xl,
+    gap: spacing.md,
+  },
+  successIcon: { fontSize: 48 },
+  successText: {
+    fontSize: typography.fontSizes.lg,
+    fontWeight: typography.fontWeights.bold,
+    color: colors.gray900,
+    textAlign: 'center',
+  },
+  doneBtn: {
+    backgroundColor: colors.primary,
+    paddingHorizontal: spacing.xxl,
+    paddingVertical: spacing.md,
+    borderRadius: 10,
+    marginTop: spacing.sm,
+  },
+  doneBtnText: {
+    color: colors.white,
+    fontWeight: typography.fontWeights.bold,
   },
 });
