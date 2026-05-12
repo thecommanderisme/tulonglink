@@ -1,4 +1,5 @@
 import { Tabs } from 'expo-router';
+import { Ionicons } from '@expo/vector-icons';
 import { colors } from '../../theme';
 
 export default function TabsLayout() {
@@ -20,11 +21,51 @@ export default function TabsLayout() {
         },
       }}
     >
-      <Tabs.Screen name="index" options={{ title: 'Home' }} />
-      <Tabs.Screen name="jobs" options={{ title: 'Trabaho' }} />
-      <Tabs.Screen name="services" options={{ title: 'Serbisyo' }} />
-      <Tabs.Screen name="feed" options={{ title: 'Balita' }} />
-      <Tabs.Screen name="profile" options={{ title: 'Profile' }} />
+      <Tabs.Screen
+        name="index"
+        options={{
+          title: 'Home',
+          tabBarIcon: ({ color, size }) => (
+            <Ionicons name="home-outline" size={size} color={color} />
+          ),
+        }}
+      />
+      <Tabs.Screen
+        name="jobs"
+        options={{
+          title: 'Trabaho',
+          tabBarIcon: ({ color, size }) => (
+            <Ionicons name="briefcase-outline" size={size} color={color} />
+          ),
+        }}
+      />
+      <Tabs.Screen
+        name="services"
+        options={{
+          title: 'Serbisyo',
+          tabBarIcon: ({ color, size }) => (
+            <Ionicons name="medkit-outline" size={size} color={color} />
+          ),
+        }}
+      />
+      <Tabs.Screen
+        name="feed"
+        options={{
+          title: 'Balita',
+          tabBarIcon: ({ color, size }) => (
+            <Ionicons name="newspaper-outline" size={size} color={color} />
+          ),
+        }}
+      />
+      <Tabs.Screen
+        name="profile"
+        options={{
+          title: 'Profile',
+          tabBarIcon: ({ color, size }) => (
+            <Ionicons name="person-outline" size={size} color={color} />
+          ),
+        }}
+      />
     </Tabs>
   );
 }
