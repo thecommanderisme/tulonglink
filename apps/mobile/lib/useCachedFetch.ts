@@ -19,26 +19,29 @@ export function useCachedFetch<T>(
   const [error, setError] = useState<string | null>(null);
   const [isFromCache, setIsFromCache] = useState(false);
 
-  // Create a cache key from URL + params
   const cacheKey = url + JSON.stringify(params || {});
+
+  // Helper to extract data from response
+  // Handles both paginated (Page object) and non-paginated responses
+  const extractData = (responseData: any): T => {
+    if (responseData && responseData.content !== undefined) {
+      return responseData.content as T;
+    }
+    return responseData as T;
+  };
 
   const fetch = async (showLoading = true) => {
     if (showLoading) setLoading(true);
     setError(null);
 
     try {
-      // 1. Try to get fresh data from API
       const response = await api.get(url, { params });
-      setData(response.data);
+      const extracted = extractData(response.data);
+      setData(extracted);
       setIsFromCache(false);
-
-      // 2. Save to cache for offline use
-      await setCache(cacheKey, response.data);
-
+      await setCache(cacheKey, extracted);
     } catch (err: any) {
-      // 3. If API fails, try cache
       const cached = await getCache<T>(cacheKey);
-
       if (cached) {
         setData(cached);
         setIsFromCache(true);
@@ -52,7 +55,6 @@ export function useCachedFetch<T>(
   };
 
   useEffect(() => {
-    // On mount — show cached data immediately while fetching fresh data
     const loadWithCache = async () => {
       const cached = await getCache<T>(cacheKey);
       if (cached) {
@@ -60,7 +62,6 @@ export function useCachedFetch<T>(
         setIsFromCache(true);
         setLoading(false);
       }
-      // Then fetch fresh data in background
       await fetch(false);
     };
 

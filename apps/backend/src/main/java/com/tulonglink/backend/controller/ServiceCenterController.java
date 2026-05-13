@@ -6,6 +6,7 @@ import com.tulonglink.backend.service.ServiceCenterService;
 import jakarta.validation.Valid;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.data.domain.Page;
 
 import java.util.List;
 
@@ -20,12 +21,14 @@ public class ServiceCenterController {
     }
 
     @GetMapping
-    public ResponseEntity<List<ServiceCenterResponse>> getAll(
-            @RequestParam(required = false) String category) {
+    public ResponseEntity<Page<ServiceCenterResponse>> getAll(
+            @RequestParam(required = false) String category,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "20") int size) {
         if (category != null && !category.isEmpty()) {
-            return ResponseEntity.ok(serviceCenterService.getByCategory(category));
+            return ResponseEntity.ok(serviceCenterService.getByCategory(category, page, size));
         }
-        return ResponseEntity.ok(serviceCenterService.getAll());
+        return ResponseEntity.ok(serviceCenterService.getAll(page, size));
     }
 
     @PostMapping

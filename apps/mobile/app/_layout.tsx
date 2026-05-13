@@ -1,4 +1,4 @@
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Stack } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { I18nextProvider } from 'react-i18next';
@@ -14,11 +14,17 @@ import { router } from 'expo-router';
 
 export default function RootLayout() {
   const notificationsSetup = useRef(false);
+  const [mounted, setMounted] = useState(false);
 
   useEffect(() => {
+    setMounted(true);
+  }, []);
+
+  useEffect(() => {
+    if (!mounted) return;
     init();
     setupNotifications();
-  }, []);
+  }, [mounted]);
 
   const init = async () => {
     await initI18n();

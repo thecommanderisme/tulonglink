@@ -11,6 +11,9 @@ import org.springframework.stereotype.Service;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.stream.Collectors;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
 
 @Service
 public class AnnouncementService {
@@ -25,20 +28,16 @@ public class AnnouncementService {
         this.userRepository = userRepository;
     }
 
-    // Get all active announcements
-    public List<AnnouncementResponse> getActiveAnnouncements() {
-        return announcementRepository.findActiveAnnouncements(LocalDateTime.now())
-                .stream()
-                .map(this::toResponse)
-                .collect(Collectors.toList());
+    public Page<AnnouncementResponse> getActiveAnnouncements(int page, int size) {
+        Pageable pageable = PageRequest.of(page, size);
+        return announcementRepository.findActiveAnnouncements(LocalDateTime.now(), pageable)
+                .map(this::toResponse);
     }
 
-    // Get by category
-    public List<AnnouncementResponse> getByCategory(String category) {
-        return announcementRepository.findActiveByCategoryAndNotExpired(category, LocalDateTime.now())
-                .stream()
-                .map(this::toResponse)
-                .collect(Collectors.toList());
+    public Page<AnnouncementResponse> getByCategory(String category, int page, int size) {
+        Pageable pageable = PageRequest.of(page, size);
+        return announcementRepository.findActiveByCategoryAndNotExpired(category, LocalDateTime.now(), pageable)
+                .map(this::toResponse);
     }
 
     // Create announcement

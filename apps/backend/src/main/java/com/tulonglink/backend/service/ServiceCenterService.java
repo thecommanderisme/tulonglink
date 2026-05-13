@@ -8,6 +8,9 @@ import org.springframework.stereotype.Service;
 
 import java.util.List;
 import java.util.stream.Collectors;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
 
 @Service
 public class ServiceCenterService {
@@ -18,18 +21,16 @@ public class ServiceCenterService {
         this.serviceCenterRepository = serviceCenterRepository;
     }
 
-    public List<ServiceCenterResponse> getAll() {
-        return serviceCenterRepository.findByDeletedAtIsNullOrderByCreatedAtDesc()
-                .stream()
-                .map(this::toResponse)
-                .collect(Collectors.toList());
+    public Page<ServiceCenterResponse> getAll(int page, int size) {
+        Pageable pageable = PageRequest.of(page, size);
+        return serviceCenterRepository.findByDeletedAtIsNullOrderByCreatedAtDesc(pageable)
+                .map(this::toResponse);
     }
 
-    public List<ServiceCenterResponse> getByCategory(String category) {
-        return serviceCenterRepository.findByCategoryAndDeletedAtIsNullOrderByCreatedAtDesc(category)
-                .stream()
-                .map(this::toResponse)
-                .collect(Collectors.toList());
+    public Page<ServiceCenterResponse> getByCategory(String category, int page, int size) {
+        Pageable pageable = PageRequest.of(page, size);
+        return serviceCenterRepository.findByCategoryAndDeletedAtIsNullOrderByCreatedAtDesc(category, pageable)
+                .map(this::toResponse);
     }
 
     public ServiceCenterResponse create(ServiceCenterRequest request) {

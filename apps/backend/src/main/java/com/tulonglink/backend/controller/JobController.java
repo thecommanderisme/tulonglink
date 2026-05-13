@@ -11,6 +11,7 @@ import org.springframework.web.bind.annotation.*;
 import com.tulonglink.backend.dto.ApplicationResponse;
 
 import java.util.List;
+import org.springframework.data.domain.Page;
 
 @RestController
 @RequestMapping("/jobs")
@@ -24,17 +25,19 @@ public class JobController {
 
     // GET /jobs — get all jobs
     @GetMapping
-    public ResponseEntity<List<JobResponse>> getAllJobs(
+    public ResponseEntity<Page<JobResponse>> getAllJobs(
             @RequestParam(required = false) String category,
-            @RequestParam(required = false) String search) {
+            @RequestParam(required = false) String search,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "20") int size) {
 
         if (search != null && !search.isEmpty()) {
-            return ResponseEntity.ok(jobService.searchJobs(search));
+            return ResponseEntity.ok(jobService.searchJobs(search, page, size));
         }
         if (category != null && !category.isEmpty()) {
-            return ResponseEntity.ok(jobService.getJobsByCategory(category));
+            return ResponseEntity.ok(jobService.getJobsByCategory(category, page, size));
         }
-        return ResponseEntity.ok(jobService.getAllJobs());
+        return ResponseEntity.ok(jobService.getAllJobs(page, size));
     }
 
     @GetMapping("/my-applications")

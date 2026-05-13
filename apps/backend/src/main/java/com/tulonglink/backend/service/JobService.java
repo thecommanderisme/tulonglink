@@ -10,10 +10,14 @@ import com.tulonglink.backend.repository.JobApplicationRepository;
 import com.tulonglink.backend.repository.JobRepository;
 import com.tulonglink.backend.repository.UserRepository;
 import org.springframework.stereotype.Service;
+import com.tulonglink.backend.dto.ApplicationResponse;
 
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.stream.Collectors;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
 
 @Service
 public class JobService {
@@ -31,29 +35,26 @@ public class JobService {
         this.userRepository = userRepository;
     }
 
-    // Get all jobs
-    public List<JobResponse> getAllJobs() {
-        return jobRepository.findByDeletedAtIsNullOrderByCreatedAtDesc()
-                .stream()
-                .map(this::toResponse)
-                .collect(Collectors.toList());
-    }
+        // Get all jobs with pagination
+        public Page<JobResponse> getAllJobs(int page, int size) {
+        Pageable pageable = PageRequest.of(page, size);
+        return jobRepository.findByDeletedAtIsNullOrderByCreatedAtDesc(pageable)
+                .map(this::toResponse);
+        }
 
-    // Get jobs by category
-    public List<JobResponse> getJobsByCategory(String category) {
-        return jobRepository.findByCategoryAndDeletedAtIsNullOrderByCreatedAtDesc(category)
-                .stream()
-                .map(this::toResponse)
-                .collect(Collectors.toList());
-    }
+        // Get jobs by category with pagination
+        public Page<JobResponse> getJobsByCategory(String category, int page, int size) {
+        Pageable pageable = PageRequest.of(page, size);
+        return jobRepository.findByCategoryAndDeletedAtIsNullOrderByCreatedAtDesc(category, pageable)
+                .map(this::toResponse);
+        }
 
-    // Search jobs
-    public List<JobResponse> searchJobs(String keyword) {
-        return jobRepository.searchByTitle(keyword)
-                .stream()
-                .map(this::toResponse)
-                .collect(Collectors.toList());
-    }
+        // Search jobs with pagination
+        public Page<JobResponse> searchJobs(String keyword, int page, int size) {
+        Pageable pageable = PageRequest.of(page, size);
+        return jobRepository.searchByTitle(keyword, pageable)
+                .map(this::toResponse);
+        }
 
     // Get single job
     public JobResponse getJob(Long id) {

@@ -7,6 +7,7 @@ import jakarta.validation.Valid;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.data.domain.Page;
 
 import java.util.List;
 
@@ -22,12 +23,14 @@ public class AnnouncementController {
 
     // GET /announcements
     @GetMapping
-    public ResponseEntity<List<AnnouncementResponse>> getAnnouncements(
-            @RequestParam(required = false) String category) {
+    public ResponseEntity<Page<AnnouncementResponse>> getAnnouncements(
+            @RequestParam(required = false) String category,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "20") int size) {
         if (category != null && !category.isEmpty()) {
-            return ResponseEntity.ok(announcementService.getByCategory(category));
+            return ResponseEntity.ok(announcementService.getByCategory(category, page, size));
         }
-        return ResponseEntity.ok(announcementService.getActiveAnnouncements());
+        return ResponseEntity.ok(announcementService.getActiveAnnouncements(page, size));
     }
 
     // POST /announcements
