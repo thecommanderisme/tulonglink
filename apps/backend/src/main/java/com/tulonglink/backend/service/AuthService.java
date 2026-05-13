@@ -20,19 +20,19 @@ public class AuthService {
     private final JwtUtil jwtUtil;
     private final PasswordEncoder passwordEncoder;
     private final RefreshTokenService refreshTokenService;
-
-    // Temporary in-memory OTP store (we'll move to Redis later)
-    private final Map<String, String> otpStore = new HashMap<>();
+    private final OtpService otpService;
 
     public AuthService(
             UserRepository userRepository,
             JwtUtil jwtUtil,
             PasswordEncoder passwordEncoder,
-            RefreshTokenService refreshTokenService) {
+            RefreshTokenService refreshTokenService,
+            OtpService otpService) {
         this.userRepository = userRepository;
         this.jwtUtil = jwtUtil;
         this.passwordEncoder = passwordEncoder;
         this.refreshTokenService = refreshTokenService;
+        this.otpService = otpService;
     }
 
     // Register a new user
@@ -94,31 +94,19 @@ public class AuthService {
 
     // Generate and store OTP
     public String sendOtp(String phone) {
-
-        // Generate 6-digit OTP
-        String otp = String.format("%06d", new Random().nextInt(999999));
-
-        // Store it temporarily (phone → otp)
-        otpStore.put(phone, otp);
-
+        String otp = otpService.generateOtp(phone);
         // TODO: Send via Semaphore PH SMS API
-        // For now we return it directly for testing
         System.out.println("OTP for " + phone + ": " + otp);
-
         return "OTP sent successfully";
     }
 
     // Verify OTP and return JWT
     public AuthResponse verifyOtp(AuthRequest request) {
+        boolean valid = otpService.verifyOtp(request.getPhone(), request.getOtp());
 
-        String storedOtp = otpStore.get(request.getPhone());
-
-        if (storedOtp == null || !storedOtp.equals(request.getOtp())) {
+        if (!valid) {
             throw new RuntimeException("Invalid or expired OTP");
         }
-
-        // Remove OTP after use
-        otpStore.remove(request.getPhone());
 
         // Find or create user
         User user = userRepository.findByPhone(request.getPhone())
@@ -139,7 +127,7 @@ public class AuthService {
         String refreshToken = refreshTokenService.createRefreshToken(user).getToken();
         return new AuthResponse(token, user.getRole().name(), user.getId(), "OTP verified successfully", refreshToken);
     }
-    
+
     public AuthResponse refresh(String refreshToken) {
         RefreshToken token = refreshTokenService.validateRefreshToken(refreshToken);
         User user = token.getUser();
