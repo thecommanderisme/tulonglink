@@ -9,10 +9,6 @@ import com.tulonglink.backend.security.JwtUtil;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
-import java.util.HashMap;
-import java.util.Map;
-import java.util.Random;
-
 @Service
 public class AuthService {
 
@@ -37,13 +33,10 @@ public class AuthService {
 
     // Register a new user
     public AuthResponse register(AuthRequest request) {
-
-        // Check if phone already exists
         if (userRepository.existsByPhone(request.getPhone())) {
             throw new RuntimeException("Phone number already registered");
         }
 
-        // Determine role - default to RESIDENT
         User.Role role = User.Role.RESIDENT;
         if (request.getRole() != null) {
             try {
@@ -53,7 +46,6 @@ public class AuthService {
             }
         }
 
-        // Build and save the user
         User user = User.builder()
                 .phone(request.getPhone())
                 .email(request.getEmail())
@@ -62,20 +54,13 @@ public class AuthService {
                 .build();
 
         User saved = userRepository.save(user);
-
-        // Generate JWT token
-        String token = jwtUtil.generateToken(
-                saved.getId().toString(),
-                saved.getRole().name()
-        );
-
+        String token = jwtUtil.generateToken(saved.getId().toString(), saved.getRole().name());
         String refreshToken = refreshTokenService.createRefreshToken(saved).getToken();
         return new AuthResponse(token, saved.getRole().name(), saved.getId(), "Registration successful", refreshToken);
     }
 
     // Login with phone
     public AuthResponse login(AuthRequest request) {
-
         User user = userRepository.findByPhone(request.getPhone())
                 .orElseThrow(() -> new RuntimeException("User not found"));
 
@@ -83,16 +68,12 @@ public class AuthService {
             throw new RuntimeException("Account is not active");
         }
 
-        String token = jwtUtil.generateToken(
-                user.getId().toString(),
-                user.getRole().name()
-        );
-
+        String token = jwtUtil.generateToken(user.getId().toString(), user.getRole().name());
         String refreshToken = refreshTokenService.createRefreshToken(user).getToken();
         return new AuthResponse(token, user.getRole().name(), user.getId(), "Login successful", refreshToken);
     }
 
-    // Generate and store OTP
+    // Send OTP
     public String sendOtp(String phone) {
         String otp = otpService.generateOtp(phone);
         // TODO: Send via Semaphore PH SMS API
@@ -100,7 +81,7 @@ public class AuthService {
         return "OTP sent successfully";
     }
 
-    // Verify OTP and return JWT
+    // Verify OTP
     public AuthResponse verifyOtp(AuthRequest request) {
         boolean valid = otpService.verifyOtp(request.getPhone(), request.getOtp());
 
@@ -108,7 +89,6 @@ public class AuthService {
             throw new RuntimeException("Invalid or expired OTP");
         }
 
-        // Find or create user
         User user = userRepository.findByPhone(request.getPhone())
                 .orElseGet(() -> {
                     User newUser = User.builder()
@@ -119,26 +99,18 @@ public class AuthService {
                     return userRepository.save(newUser);
                 });
 
-        String token = jwtUtil.generateToken(
-                user.getId().toString(),
-                user.getRole().name()
-        );
-
+        String token = jwtUtil.generateToken(user.getId().toString(), user.getRole().name());
         String refreshToken = refreshTokenService.createRefreshToken(user).getToken();
         return new AuthResponse(token, user.getRole().name(), user.getId(), "OTP verified successfully", refreshToken);
     }
 
+    // Refresh token
     public AuthResponse refresh(String refreshToken) {
         RefreshToken token = refreshTokenService.validateRefreshToken(refreshToken);
         User user = token.getUser();
 
-        String newJwt = jwtUtil.generateToken(
-                user.getId().toString(),
-                user.getRole().name()
-        );
-
+        String newJwt = jwtUtil.generateToken(user.getId().toString(), user.getRole().name());
         String newRefreshToken = refreshTokenService.createRefreshToken(user).getToken();
-
         return new AuthResponse(newJwt, user.getRole().name(), user.getId(), "Token refreshed", newRefreshToken);
     }
 }

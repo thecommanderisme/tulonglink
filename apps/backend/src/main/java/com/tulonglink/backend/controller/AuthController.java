@@ -3,9 +3,12 @@ package com.tulonglink.backend.controller;
 import com.tulonglink.backend.dto.AuthRequest;
 import com.tulonglink.backend.dto.AuthResponse;
 import com.tulonglink.backend.service.AuthService;
+import com.tulonglink.backend.service.RefreshTokenService;
 import jakarta.validation.Valid;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
+
 import java.util.Map;
 
 @RestController
@@ -13,9 +16,11 @@ import java.util.Map;
 public class AuthController {
 
     private final AuthService authService;
+    private final RefreshTokenService refreshTokenService;
 
-    public AuthController(AuthService authService) {
+    public AuthController(AuthService authService, RefreshTokenService refreshTokenService) {
         this.authService = authService;
+        this.refreshTokenService = refreshTokenService;
     }
 
     @PostMapping("/register")
@@ -41,5 +46,14 @@ public class AuthController {
     @PostMapping("/refresh")
     public ResponseEntity<AuthResponse> refresh(@RequestBody Map<String, String> body) {
         return ResponseEntity.ok(authService.refresh(body.get("refreshToken")));
+    }
+
+    @PostMapping("/logout")
+    public ResponseEntity<String> logout(Authentication auth) {
+        if (auth != null) {
+            Long userId = Long.parseLong(auth.getName());
+            refreshTokenService.revokeAllUserTokens(userId);
+        }
+        return ResponseEntity.ok("Logged out successfully");
     }
 }

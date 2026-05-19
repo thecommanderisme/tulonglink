@@ -23,7 +23,11 @@ export default function PhoneScreen() {
       await sendOtp(phone);
       router.push({ pathname: '/(auth)/otp', params: { phone } });
     } catch (err: any) {
-      setError(t('phone.apiError'));
+      if (err.response?.status === 429) {
+        setError('Napakaraming pagsubok. Maghintay ng isang minuto.');
+      } else {
+        setError(t('phone.apiError'));
+      }
     } finally {
       setLoading(false);
     }

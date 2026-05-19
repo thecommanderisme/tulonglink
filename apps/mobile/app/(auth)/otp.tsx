@@ -38,7 +38,11 @@ export default function OtpScreen() {
       setError('');
       setOtp('');
     } catch (err: any) {
-      setError(t('phone.apiError'));
+      if (err.response?.status === 429) {
+        setError('Napakaraming pagsubok. Maghintay ng isang minuto.');
+      } else {
+        setError(t('phone.apiError'));
+      }
     } finally {
       setResending(false);
     }
