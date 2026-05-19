@@ -5,6 +5,7 @@ import { useTranslation } from 'react-i18next';
 import { Button, Input } from '../../components';
 import { colors, typography, spacing } from '../../theme';
 import { verifyOtp, sendOtp } from '../../lib/authApi';
+import api from '../../lib/api';
 
 export default function OtpScreen() {
   const { t } = useTranslation();
@@ -14,22 +15,42 @@ export default function OtpScreen() {
   const [loading, setLoading] = useState(false);
   const [resending, setResending] = useState(false);
 
-  const handleVerify = async () => {
-    if (!otp || otp.length < 6) {
-      setError(t('otp.error'));
-      return;
-    }
-    setError('');
-    setLoading(true);
+const handleVerify = async () => {
+  if (!otp || otp.length < 6) {
+    setError(t('otp.error'));
+    return;
+  }
+  setError('');
+  setLoading(true);
+  try {
+    const response = await verifyOtp(phone, otp);
+    
+    // Check if user already has a barangay set
     try {
-      await verifyOtp(phone, otp);
-      router.replace('/(tabs)');
-    } catch (err: any) {
-      setError(t('otp.apiError'));
-    } finally {
-      setLoading(false);
+      const profileResponse = await api.get('/users/profile');
+      if (profileResponse.data?.barangayId) {
+        // Already has barangay — go straight to home
+        router.replace('/(tabs)');
+      } else {
+        // New user — go to barangay picker
+        router.replace({
+          pathname: '/(auth)/barangay',
+          params: { isOnboarding: 'true' }
+        });
+      }
+    } catch {
+      // No profile yet — go to barangay picker
+      router.replace({
+        pathname: '/(auth)/barangay',
+        params: { isOnboarding: 'true' }
+      });
     }
-  };
+  } catch (err: any) {
+    setError(t('otp.apiError'));
+  } finally {
+    setLoading(false);
+  }
+};
 
   const handleResend = async () => {
     setResending(true);
