@@ -153,6 +153,14 @@ export default function ProfileScreen() {
             <Text style={styles.linkText}>📋 Mga Na-apply Ko</Text>
             <Text style={styles.linkArrow}>→</Text>
           </TouchableOpacity>
+          <View style={styles.divider} />
+          <TouchableOpacity
+            style={styles.linkRow}
+            onPress={() => router.push('/my-help-requests')}
+          >
+            <Text style={styles.linkText}>🤝 Mga Kahilingan Ko</Text>
+            <Text style={styles.linkArrow}>→</Text>
+          </TouchableOpacity>
         </Card>
       </View>
 

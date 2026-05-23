@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import {
   View, Text, StyleSheet, ScrollView,
   TouchableOpacity, RefreshControl, ActivityIndicator,
@@ -11,6 +11,7 @@ import { Card, Badge, Input } from '../../components';
 import { useCachedFetch } from '../../lib/useCachedFetch';
 import api from '../../lib/api';
 
+
 interface Job {
   id: number;
   title: string;
@@ -20,6 +21,13 @@ interface Job {
   status: string;
   createdAt: string;
   applicationCount: number;
+}
+
+// Add this interface
+interface Application {
+  id: number;
+  job: { id: number };
+  status: string;
 }
 
 const CATEGORIES = ['Lahat', 'Bahay', 'Pagkain', 'Konstruksiyon', 'Bantay', 'Iba pa'];
@@ -40,6 +48,15 @@ export default function JobsScreen() {
 
   const { data: jobs, loading, refresh, isFromCache } =
     useCachedFetch<Job[]>('/jobs', params);
+
+  const { data: myApplications } = useCachedFetch<Application[]>('/jobs/my-applications');
+    // Initialize appliedJobs from existing applications
+    useEffect(() => {
+      if (myApplications && myApplications.length > 0) {
+        const appliedIds = myApplications.map(app => app.job?.id).filter(Boolean);
+        setAppliedJobs(appliedIds);
+      }
+    }, [myApplications]);
 
   const handleApply = async (jobId: number) => {
     try {
