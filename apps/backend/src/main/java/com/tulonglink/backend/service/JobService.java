@@ -11,6 +11,7 @@ import com.tulonglink.backend.repository.JobRepository;
 import com.tulonglink.backend.repository.UserRepository;
 import org.springframework.stereotype.Service;
 import com.tulonglink.backend.dto.ApplicationResponse;
+import java.time.format.DateTimeFormatter;
 
 import java.time.LocalDateTime;
 import java.util.List;
@@ -35,17 +36,15 @@ public class JobService {
         this.userRepository = userRepository;
     }
 
-        // Get all jobs with pagination
-        public Page<JobResponse> getAllJobs(int page, int size) {
+    public Page<JobResponse> getAllJobs(int page, int size) {
         Pageable pageable = PageRequest.of(page, size);
-        return jobRepository.findByDeletedAtIsNullOrderByCreatedAtDesc(pageable)
+        return jobRepository.findByDeletedAtIsNullOrderByCreatedAtDesc(pageable, LocalDateTime.now())
                 .map(this::toResponse);
         }
 
-        // Get jobs by category with pagination
-        public Page<JobResponse> getJobsByCategory(String category, int page, int size) {
+    public Page<JobResponse> getJobsByCategory(String category, int page, int size) {
         Pageable pageable = PageRequest.of(page, size);
-        return jobRepository.findByCategoryAndDeletedAtIsNullOrderByCreatedAtDesc(category, pageable)
+        return jobRepository.findByCategoryAndDeletedAtIsNullOrderByCreatedAtDesc(category, pageable, LocalDateTime.now())
                 .map(this::toResponse);
         }
 
@@ -76,6 +75,23 @@ public class JobService {
                 .status("OPEN")
                 .postedByUser(user)
                 .build();
+
+        // Parse dateNeeded if provided
+        if (request.getDateNeeded() != null && !request.getDateNeeded().isEmpty()) {
+                try {
+                job.setDateNeeded(LocalDateTime.parse(request.getDateNeeded(),
+                        DateTimeFormatter.ISO_LOCAL_DATE_TIME));
+                } catch (Exception e) {
+                // Try date only format
+                try {
+                        job.setDateNeeded(LocalDateTime.parse(
+                        request.getDateNeeded() + "T23:59:59",
+                        DateTimeFormatter.ISO_LOCAL_DATE_TIME));
+                } catch (Exception ex) {
+                        System.out.println("Could not parse dateNeeded: " + request.getDateNeeded());
+                }
+                }
+        }
 
         Job saved = jobRepository.save(job);
         return toResponse(saved);
