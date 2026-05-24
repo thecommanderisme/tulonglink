@@ -1,7 +1,7 @@
 import { useState, useCallback } from 'react';
 import {
   View, Text, StyleSheet, ScrollView,
-  TouchableOpacity, ActivityIndicator, RefreshControl
+  TouchableOpacity, ActivityIndicator, RefreshControl, Alert
 } from 'react-native';
 import { router, useFocusEffect } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
@@ -47,6 +47,51 @@ export default function MyPostsScreen() {
     await fetchMyPosts();
     setRefreshing(false);
   };
+
+  const handleCloseJob = async (jobId: number) => {
+    Alert.alert(
+      'Isara ang Job?',
+      'Hindi na matatanggap ang mga bagong aplikante.',
+      [
+        { text: 'Kanselahin', style: 'cancel' },
+        {
+          text: 'Isara',
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              await api.patch(`/jobs/${jobId}/close`);
+              await fetchMyPosts();
+            } catch (err: any) {
+              Alert.alert('Error', err.response?.data?.message || 'Hindi masara. Subukan ulit.');
+            }
+          },
+        },
+      ]
+    );
+  };
+  
+const handleDeleteJob = async (jobId: number) => {
+  Alert.alert(
+    'Burahin ang Job?',
+    'Hindi na ito mababawi. Mabubura na ang lahat ng applications.',
+    [
+      { text: 'Kanselahin', style: 'cancel' },
+      {
+        text: 'Burahin',
+        style: 'destructive',
+        onPress: async () => {
+          try {
+            await api.delete(`/jobs/${jobId}`);
+            // Remove from local state immediately
+            setJobs(prev => prev.filter(j => j.id !== jobId));
+          } catch (err: any) {
+            Alert.alert('Error', err.response?.data?.message || 'Hindi mabura. Subukan ulit.');
+          }
+        },
+      },
+    ]
+  );
+};
 
   const formatDate = (dateStr: string) => {
     if (!dateStr) return '';
@@ -159,6 +204,47 @@ export default function MyPostsScreen() {
                     <Text style={styles.viewApplicants}>Tingnan →</Text>
                   </View>
                 </View>
+
+                {/* Job actions */}
+                <View style={styles.jobActions}>
+                  <TouchableOpacity
+                    style={styles.editBtn}
+                    onPress={(e) => {
+                      e.stopPropagation();
+                      router.push({
+                        pathname: '/edit-job',
+                        params: { jobId: job.id }
+                      });
+                    }}
+                  >
+                    <Ionicons name="create-outline" size={14} color={colors.primary} />
+                    <Text style={styles.editBtnText}>I-edit</Text>
+                  </TouchableOpacity>
+
+                  {job.status === 'OPEN' && (
+                    <TouchableOpacity
+                      style={styles.closeBtn}
+                      onPress={(e) => {
+                        e.stopPropagation();
+                        handleCloseJob(job.id);
+                      }}
+                    >
+                      <Ionicons name="lock-closed-outline" size={14} color={colors.warning} />
+                      <Text style={styles.closeBtnText}>Isara</Text>
+                    </TouchableOpacity>
+                  )}
+
+                  <TouchableOpacity
+                    style={styles.deleteBtn}
+                    onPress={(e) => {
+                      e.stopPropagation();
+                      handleDeleteJob(job.id);
+                    }}
+                  >
+                    <Ionicons name="trash-outline" size={14} color={colors.danger} />
+                    <Text style={styles.deleteBtnText}>Burahin</Text>
+                  </TouchableOpacity>
+                </View>
               </Card>
             </TouchableOpacity>
           ))}
@@ -262,5 +348,58 @@ const styles = StyleSheet.create({
     color: colors.primary,
     fontWeight: typography.fontWeights.medium,
     marginLeft: 4,
+  },
+  jobActions: {
+    flexDirection: 'row',
+    gap: spacing.sm,
+    borderTopWidth: 0.5,
+    borderTopColor: colors.gray200,
+    paddingTop: spacing.sm,
+    marginTop: spacing.sm,
+  },
+  editBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.sm,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: colors.primary,
+  },
+  editBtnText: {
+    fontSize: typography.fontSizes.xs,
+    color: colors.primary,
+    fontWeight: typography.fontWeights.medium,
+  },
+  closeBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.sm,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: colors.warning,
+  },
+  closeBtnText: {
+    fontSize: typography.fontSizes.xs,
+    color: colors.warning,
+    fontWeight: typography.fontWeights.medium,
+  },
+  deleteBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.sm,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: colors.dangerLight,
+  },
+  deleteBtnText: {
+    fontSize: typography.fontSizes.xs,
+    color: colors.danger,
+    fontWeight: typography.fontWeights.medium,
   },
 });

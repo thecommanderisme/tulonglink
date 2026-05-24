@@ -22,4 +22,5 @@ public class JobResponse {
     private String barangay;
     private LocalDateTime createdAt;
     private int applicationCount;
+    private Long postedById;
 }

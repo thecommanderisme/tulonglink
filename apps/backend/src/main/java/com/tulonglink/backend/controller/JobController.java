@@ -75,13 +75,14 @@ public ResponseEntity<Page<JobResponse>> getAllJobs(
     }
 
     // DELETE /jobs/{id} — soft delete a job
-    @DeleteMapping("/{id}")
-    public ResponseEntity<String> deleteJob(
-            @PathVariable Long id,
-            Authentication auth) {
-        Long userId = Long.parseLong(auth.getName());
-        return ResponseEntity.ok(jobService.deleteJob(id, userId));
-    }
+@DeleteMapping("/{id}")
+public ResponseEntity<String> deleteJob(
+        @PathVariable Long id,
+        Authentication auth) {
+    Long userId = Long.parseLong(auth.getName());
+    jobService.deleteJob(id, userId);
+    return ResponseEntity.ok("Job deleted successfully");
+}
 
     @GetMapping("/{id}/applications")
 public ResponseEntity<List<ApplicationResponse>> getJobApplications(
@@ -107,4 +108,25 @@ public ResponseEntity<List<JobResponse>> getMyPostedJobs(Authentication auth) {
     Long userId = Long.parseLong(auth.getName());
     return ResponseEntity.ok(jobService.getMyPostedJobs(userId));
 }
+
+// Close a job
+@PatchMapping("/{id}/close")
+public ResponseEntity<String> closeJob(
+        @PathVariable Long id,
+        Authentication auth) {
+    Long userId = Long.parseLong(auth.getName());
+    jobService.closeJob(id, userId);
+    return ResponseEntity.ok("Job closed successfully");
+}
+
+// Edit a job
+@PatchMapping("/{id}")
+public ResponseEntity<JobResponse> editJob(
+        @PathVariable Long id,
+        @RequestBody JobRequest request,
+        Authentication auth) {
+    Long userId = Long.parseLong(auth.getName());
+    return ResponseEntity.ok(jobService.editJob(id, request, userId));
+}
+
 }

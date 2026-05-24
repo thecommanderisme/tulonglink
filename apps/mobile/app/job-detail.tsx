@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import {
   View, Text, StyleSheet, ScrollView,
   TouchableOpacity, ActivityIndicator, Alert
@@ -18,6 +18,7 @@ interface Job {
   location: string;
   status: string;
   postedBy: string;
+  postedById: number;
   createdAt: string;
   applicationCount: number;
 }
@@ -26,8 +27,27 @@ export default function JobDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const [applying, setApplying] = useState(false);
   const [applied, setApplied] = useState(false);
+  const [isOwner, setIsOwner] = useState(false);
+  const [checkingOwner, setCheckingOwner] = useState(true);
 
   const { data: job, loading } = useCachedFetch<Job>(`/jobs/${id}`);
+
+  useEffect(() => {
+    if (job) checkOwnership();
+  }, [job]);
+
+  const checkOwnership = async () => {
+    try {
+      const userRes = await api.get('/users/me');
+      if (job?.postedById === userRes.data?.id) {
+        setIsOwner(true);
+      }
+    } catch (err) {
+      console.log('Ownership check error:', err);
+    } finally {
+      setCheckingOwner(false);
+    }
+  };
 
   const handleApply = async () => {
     setApplying(true);
@@ -47,7 +67,7 @@ export default function JobDetailScreen() {
     }
   };
 
-  if (loading) {
+  if (loading || checkingOwner) {
     return (
       <View style={styles.center}>
         <ActivityIndicator color={colors.primary} size="large" />
@@ -84,7 +104,7 @@ export default function JobDetailScreen() {
           <View style={styles.jobHeader}>
             <Text style={styles.jobTitle}>{job.title}</Text>
             <Badge
-              label={job.status === 'OPEN' ? 'Bukas' : 'Sarado'}
+              label={job.status === 'OPEN' ? 'Bukas' : job.status === 'FILLED' ? 'Napuno' : 'Sarado'}
               variant={job.status === 'OPEN' ? 'success' : 'neutral'}
             />
           </View>
@@ -121,34 +141,46 @@ export default function JobDetailScreen() {
           </View>
         </View>
 
-        {/* Anti-scam Warning */}
-        <View style={styles.scamWarning}>
-          <View style={styles.scamHeader}>
-            <Ionicons name="warning-outline" size={20} color={colors.warning} />
-            <Text style={styles.scamTitle}>Mag-ingat sa Scam!</Text>
+        {/* Owner banner */}
+        {isOwner && (
+          <View style={styles.ownerBanner}>
+            <Ionicons name="information-circle-outline" size={18} color={colors.primary} />
+            <Text style={styles.ownerText}>
+              Ito ay iyong job post. Hindi ka makapag-apply sa sarili mong post.
+            </Text>
           </View>
-          <Text style={styles.scamText}>
-            ⚠️ Huwag magbayad ng kahit anong halaga para makakuha ng trabaho.
-          </Text>
-          <Text style={styles.scamText}>
-            ⚠️ Huwag ibigay ang iyong personal na impormasyon bago makapag-usap sa employer.
-          </Text>
-          <Text style={styles.scamText}>
-            ⚠️ Kung may hinihingi silang bayad bago ka magtrabaho — SCAM iyan!
-          </Text>
-          <TouchableOpacity
-            style={styles.reportScamBtn}
-            onPress={() => router.back()}
-          >
-            <Text style={styles.reportScamText}>🚩 I-report ang Job Post</Text>
-          </TouchableOpacity>
-        </View>
+        )}
+
+        {/* Anti-scam Warning */}
+        {!isOwner && (
+          <View style={styles.scamWarning}>
+            <View style={styles.scamHeader}>
+              <Ionicons name="warning-outline" size={20} color={colors.warning} />
+              <Text style={styles.scamTitle}>Mag-ingat sa Scam!</Text>
+            </View>
+            <Text style={styles.scamText}>
+              ⚠️ Huwag magbayad ng kahit anong halaga para makakuha ng trabaho.
+            </Text>
+            <Text style={styles.scamText}>
+              ⚠️ Huwag ibigay ang iyong personal na impormasyon bago makapag-usap sa employer.
+            </Text>
+            <Text style={styles.scamText}>
+              ⚠️ Kung may hinihingi silang bayad bago ka magtrabaho — SCAM iyan!
+            </Text>
+            <TouchableOpacity
+              style={styles.reportScamBtn}
+              onPress={() => router.back()}
+            >
+              <Text style={styles.reportScamText}>🚩 I-report ang Job Post</Text>
+            </TouchableOpacity>
+          </View>
+        )}
 
         <View style={{ height: 100 }} />
       </ScrollView>
 
-      {/* Apply Button */}
-      {job.status === 'OPEN' && (
+      {/* Apply Bar — job seeker */}
+      {job.status === 'OPEN' && !isOwner && (
         <View style={styles.applyBar}>
           <Button
             label={applied ? 'Nag-apply na ✓' : applying ? 'Nag-aapply...' : 'Mag-apply Ngayon'}
@@ -156,6 +188,19 @@ export default function JobDetailScreen() {
             disabled={applied || applying}
             loading={applying}
             style={applied ? styles.appliedBtn : undefined}
+          />
+        </View>
+      )}
+
+      {/* View Applicants Bar — owner */}
+      {isOwner && (
+        <View style={styles.applyBar}>
+          <Button
+            label={`👥 Tingnan ang mga Nag-apply (${job.applicationCount})`}
+            onPress={() => router.push({
+              pathname: '/job-applicants',
+              params: { jobId: id, jobTitle: job.title }
+            })}
           />
         </View>
       )}
@@ -220,6 +265,24 @@ const styles = StyleSheet.create({
   metaText: {
     fontSize: typography.fontSizes.md,
     color: colors.gray600,
+  },
+  ownerBanner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.sm,
+    backgroundColor: colors.primaryLight,
+    margin: spacing.lg,
+    marginTop: 0,
+    borderRadius: 12,
+    padding: spacing.lg,
+    borderWidth: 1,
+    borderColor: colors.primary,
+  },
+  ownerText: {
+    flex: 1,
+    fontSize: typography.fontSizes.sm,
+    color: colors.primaryDark,
+    lineHeight: 20,
   },
   scamWarning: {
     backgroundColor: colors.warningLight,

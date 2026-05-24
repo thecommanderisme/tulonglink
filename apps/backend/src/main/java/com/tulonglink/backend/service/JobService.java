@@ -114,40 +114,87 @@ public class JobService {
     return jobRepository.findByCity(city, pageable, LocalDateTime.now())
             .map(this::toResponse);
         }
+public String applyForJob(Long jobId, Long userId) {
+    // Check if job exists
+    Job job = jobRepository.findById(jobId)
+            .orElseThrow(() -> new RuntimeException("Job not found"));
 
-    // Apply for a job
-    public String applyForJob(Long jobId, Long userId) {
-        // Check if job exists
-        Job job = jobRepository.findById(jobId)
-                .orElseThrow(() -> new RuntimeException("Job not found"));
+    // Can't apply to your own job
+    if (job.getPostedByUser().getId().equals(userId)) {
+        throw new RuntimeException("Hindi ka makapag-apply sa sarili mong job post");
+    }
 
-        // Check if already applied
-        if (jobApplicationRepository.existsByJobIdAndUserId(jobId, userId)) {
-            throw new RuntimeException("You have already applied for this job");
+    // Check if already applied
+    if (jobApplicationRepository.existsByJobIdAndUserId(jobId, userId)) {
+        throw new RuntimeException("You have already applied for this job");
+    }
+
+    User user = userRepository.findById(userId)
+            .orElseThrow(() -> new RuntimeException("User not found"));
+
+    JobApplication application = JobApplication.builder()
+            .job(job)
+            .user(user)
+            .status("APPLIED")
+            .build();
+
+    jobApplicationRepository.save(application);
+    return "Application submitted successfully";
+}
+
+public void closeJob(Long jobId, Long userId) {
+    Job job = jobRepository.findById(jobId)
+            .orElseThrow(() -> new RuntimeException("Job not found"));
+
+    if (!job.getPostedByUser().getId().equals(userId)) {
+        throw new RuntimeException("You can only close your own jobs");
+    }
+
+    job.setStatus("CLOSED");
+    jobRepository.save(job);
+}
+
+public JobResponse editJob(Long jobId, JobRequest request, Long userId) {
+    Job job = jobRepository.findById(jobId)
+            .orElseThrow(() -> new RuntimeException("Job not found"));
+
+    if (!job.getPostedByUser().getId().equals(userId)) {
+        throw new RuntimeException("You can only edit your own jobs");
+    }
+
+    if (request.getTitle() != null) job.setTitle(request.getTitle());
+    if (request.getCategory() != null) job.setCategory(request.getCategory());
+    if (request.getPay() != null) job.setPay(request.getPay());
+    if (request.getLocation() != null) job.setLocation(request.getLocation());
+    if (request.getDateNeeded() != null && !request.getDateNeeded().isEmpty()) {
+        try {
+            job.setDateNeeded(LocalDateTime.parse(request.getDateNeeded(),
+                DateTimeFormatter.ISO_LOCAL_DATE_TIME));
+        } catch (Exception e) {
+            try {
+                job.setDateNeeded(LocalDateTime.parse(
+                    request.getDateNeeded() + "T23:59:59",
+                    DateTimeFormatter.ISO_LOCAL_DATE_TIME));
+            } catch (Exception ex) {
+                System.out.println("Could not parse dateNeeded: " + request.getDateNeeded());
+            }
         }
-
-        User user = userRepository.findById(userId)
-                .orElseThrow(() -> new RuntimeException("User not found"));
-
-        JobApplication application = JobApplication.builder()
-                .job(job)
-                .user(user)
-                .status("APPLIED")
-                .build();
-
-        jobApplicationRepository.save(application);
-        return "Application submitted successfully";
     }
 
-    // Soft delete a job
-    public String deleteJob(Long jobId, Long userId) {
-        Job job = jobRepository.findById(jobId)
-                .orElseThrow(() -> new RuntimeException("Job not found"));
+    return toResponse(jobRepository.save(job));
+}
 
-        job.setDeletedAt(LocalDateTime.now());
-        jobRepository.save(job);
-        return "Job deleted successfully";
+public void deleteJob(Long jobId, Long userId) {
+    Job job = jobRepository.findById(jobId)
+            .orElseThrow(() -> new RuntimeException("Job not found"));
+
+    if (!job.getPostedByUser().getId().equals(userId)) {
+        throw new RuntimeException("You can only delete your own jobs");
     }
+
+    job.setDeletedAt(LocalDateTime.now());
+    jobRepository.save(job);
+}
 
     // Get applications for a job
     public List<JobApplication> getApplications(Long jobId) {
@@ -215,7 +262,7 @@ public void updateApplicationStatus(Long applicationId, String status, Long user
 }
 
 public List<JobResponse> getMyPostedJobs(Long userId) {
-    return jobRepository.findByPostedByUserIdOrderByCreatedAtDesc(userId)
+    return jobRepository.findByPostedByUserIdAndDeletedAtIsNullOrderByCreatedAtDesc(userId)
             .stream()
             .map(this::toResponse)
             .collect(Collectors.toList());
