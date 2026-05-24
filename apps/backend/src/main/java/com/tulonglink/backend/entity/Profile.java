@@ -27,6 +27,9 @@ public class Profile {
     private String language;
 
     @Column
+    private String availability;
+
+    @Column
     private String skillsSummary;
 
     @Column

@@ -37,4 +37,27 @@ public class UserService {
         profile.setBarangay(barangay);
         profileRepository.save(profile);
     }
+
+public void updateProfile(Long userId, String displayName, String skillsSummary, 
+        String language, String availability, String email) {
+    User user = userRepository.findById(userId)
+            .orElseThrow(() -> new RuntimeException("User not found"));
+
+    // Update email on user
+    if (email != null && !email.isEmpty()) {
+        user.setEmail(email);
+        userRepository.save(user);
+    }
+
+    Profile profile = profileRepository.findByUserId(userId)
+            .orElseGet(() -> Profile.builder().user(user).build());
+
+    if (displayName != null) profile.setDisplayName(displayName);
+    if (skillsSummary != null) profile.setSkillsSummary(skillsSummary);
+    if (language != null) profile.setLanguage(language);
+    if (availability != null) profile.setAvailability(availability);
+
+    profileRepository.save(profile);
+}
+
 }

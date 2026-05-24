@@ -44,17 +44,42 @@ public class UserController {
         userService.setBarangay(userId, barangayId);
         return ResponseEntity.ok("Barangay updated successfully");
     }
-    @GetMapping("/profile")
-    public ResponseEntity<?> getProfile(Authentication auth) {
-        Long userId = Long.parseLong(auth.getName());
-        return ResponseEntity.ok(
-            profileRepository.findByUserId(userId)
-                .map(p -> Map.of(
-                    "barangayId", p.getBarangay() != null ? p.getBarangay().getId() : null,
-                    "barangayName", p.getBarangay() != null ? p.getBarangay().getName() : null,
-                    "displayName", p.getDisplayName() != null ? p.getDisplayName() : ""
-                ))
-                .orElse(Map.of())
-        );
-    }
+
+@GetMapping("/profile")
+public ResponseEntity<?> getProfile(Authentication auth) {
+    Long userId = Long.parseLong(auth.getName());
+    User user = userRepository.findById(userId)
+            .orElseThrow(() -> new RuntimeException("User not found"));
+    return ResponseEntity.ok(
+        profileRepository.findByUserId(userId)
+            .map(p -> Map.of(
+                "barangayId", p.getBarangay() != null ? p.getBarangay().getId() : "",
+                "barangayName", p.getBarangay() != null ? p.getBarangay().getName() : "",
+                "displayName", p.getDisplayName() != null ? p.getDisplayName() : "",
+                "skillsSummary", p.getSkillsSummary() != null ? p.getSkillsSummary() : "",
+                "language", p.getLanguage() != null ? p.getLanguage() : "tl",
+                "availability", p.getAvailability() != null ? p.getAvailability() : "",
+                "email", user.getEmail() != null ? user.getEmail() : ""
+            ))
+            .orElse(Map.of(
+                "email", user.getEmail() != null ? user.getEmail() : ""
+            ))
+    );
+}
+
+@PatchMapping("/profile")
+public ResponseEntity<String> updateProfile(
+        @RequestBody Map<String, String> body,
+        Authentication auth) {
+    Long userId = Long.parseLong(auth.getName());
+    userService.updateProfile(
+        userId,
+        body.get("displayName"),
+        body.get("skillsSummary"),
+        body.get("language"),
+        body.get("availability"),
+        body.get("email")
+    );
+    return ResponseEntity.ok("Profile updated successfully");
+}
 }

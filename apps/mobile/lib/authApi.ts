@@ -46,3 +46,12 @@ export const refreshAccessToken = async (): Promise<string | null> => {
     return null;
   }
 };
+
+// Logout — revoke refresh token on server
+export const logoutApi = async () => {
+  try {
+    await api.post('/auth/logout');
+  } catch (err) {
+    console.log('Logout API error:', err);
+  }
+};
