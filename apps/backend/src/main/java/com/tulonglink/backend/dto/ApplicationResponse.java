@@ -16,4 +16,8 @@ public class ApplicationResponse {
     private String status;
     private LocalDateTime appliedAt;
     private JobResponse job;
+
+    // Applicant info (for employer view)
+    private Long applicantId;
+    private String applicantPhone;
 }

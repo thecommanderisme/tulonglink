@@ -173,4 +173,52 @@ public class JobService {
                 .applicationCount(appCount)
                 .build();
     }
+
+    public List<ApplicationResponse> getJobApplications(Long jobId, Long userId) {
+    Job job = jobRepository.findById(jobId)
+            .orElseThrow(() -> new RuntimeException("Job not found"));
+
+    if (!job.getPostedByUser().getId().equals(userId)) {
+        throw new RuntimeException("You can only view applications for your own jobs");
+    }
+
+    return jobApplicationRepository.findByJobId(jobId)
+            .stream()
+            .map(app -> ApplicationResponse.builder()
+                    .id(app.getId())
+                    .status(app.getStatus())
+                    .appliedAt(app.getAppliedAt())
+                    .job(toResponse(app.getJob()))
+                    .applicantId(app.getUser().getId())
+                    .applicantPhone(app.getUser().getPhone())
+                    .build())
+            .collect(Collectors.toList());
+}
+
+public void updateApplicationStatus(Long applicationId, String status, Long userId) {
+    JobApplication application = jobApplicationRepository.findById(applicationId)
+            .orElseThrow(() -> new RuntimeException("Application not found"));
+
+    Job job = application.getJob();
+    if (!job.getPostedByUser().getId().equals(userId)) {
+        throw new RuntimeException("You can only update applications for your own jobs");
+    }
+
+    application.setStatus(status);
+    jobApplicationRepository.save(application);
+
+    // If hired, mark job as filled
+    if (status.equals("HIRED")) {
+        job.setStatus("FILLED");
+        jobRepository.save(job);
+    }
+}
+
+public List<JobResponse> getMyPostedJobs(Long userId) {
+    return jobRepository.findByPostedByUserIdOrderByCreatedAtDesc(userId)
+            .stream()
+            .map(this::toResponse)
+            .collect(Collectors.toList());
+}
+
 }

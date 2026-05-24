@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import {
   View, Text, StyleSheet, ScrollView,
-  TouchableOpacity, ActivityIndicator, Alert
+  TouchableOpacity, Alert
 } from 'react-native';
 import { router } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
@@ -16,6 +16,7 @@ export default function PostJobScreen() {
   const [category, setCategory] = useState('');
   const [pay, setPay] = useState('');
   const [location, setLocation] = useState('');
+  const [expiresAt, setExpiresAt] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
 
@@ -38,20 +39,15 @@ export default function PostJobScreen() {
         category,
         pay: pay.trim(),
         location: location.trim(),
+        dateNeeded: expiresAt ? `${expiresAt}T23:59:59` : null,
       });
       Alert.alert(
         'Na-post na! ✅',
         'Ang iyong job post ay nai-publish na.',
-        [{
-          text: 'OK',
-          onPress: () => router.back()
-        }]
+        [{ text: 'OK', onPress: () => router.back() }]
       );
     } catch (err: any) {
-      Alert.alert(
-        'Error',
-        err.response?.data?.message || 'Hindi ma-post. Subukan ulit.'
-      );
+      Alert.alert('Error', err.response?.data?.message || 'Hindi ma-post. Subukan ulit.');
     } finally {
       setSubmitting(false);
     }
@@ -62,10 +58,7 @@ export default function PostJobScreen() {
 
       {/* Header */}
       <View style={styles.header}>
-        <TouchableOpacity
-          onPress={() => router.back()}
-          style={styles.backBtn}
-        >
+        <TouchableOpacity onPress={() => router.back()} style={styles.backBtn}>
           <Ionicons name="arrow-back" size={24} color={colors.white} />
         </TouchableOpacity>
         <Text style={styles.headerTitle}>Mag-post ng Trabaho</Text>
@@ -74,6 +67,8 @@ export default function PostJobScreen() {
       <ScrollView
         style={styles.form}
         showsVerticalScrollIndicator={false}
+        keyboardShouldPersistTaps="handled"
+        automaticallyAdjustKeyboardInsets={true}
       >
         {/* Anti-scam reminder */}
         <View style={styles.reminderBox}>
@@ -83,7 +78,6 @@ export default function PostJobScreen() {
           </Text>
         </View>
 
-        {/* Title */}
         <Input
           label="Titulo ng Trabaho *"
           placeholder="Halimbawa: Labandera, Tagaluto, Bantay Bahay"
@@ -92,7 +86,6 @@ export default function PostJobScreen() {
           error={errors.title}
         />
 
-        {/* Category */}
         <Text style={styles.fieldLabel}>Kategorya *</Text>
         {errors.category && (
           <Text style={styles.errorText}>{errors.category}</Text>
@@ -117,7 +110,6 @@ export default function PostJobScreen() {
           ))}
         </View>
 
-        {/* Pay */}
         <Input
           label="Bayad *"
           placeholder="Halimbawa: ₱300/araw, ₱500/buwanin"
@@ -126,7 +118,6 @@ export default function PostJobScreen() {
           error={errors.pay}
         />
 
-        {/* Location */}
         <Input
           label="Lokasyon *"
           placeholder="Halimbawa: Barangay 123, Maynila"
@@ -135,7 +126,13 @@ export default function PostJobScreen() {
           error={errors.location}
         />
 
-        {/* Submit */}
+        <Input
+          label="Hanggang kailan kailangan? (Optional)"
+          placeholder="Halimbawa: 2026-06-30"
+          value={expiresAt}
+          onChangeText={setExpiresAt}
+        />
+
         <Button
           label={submitting ? 'Nagpo-post...' : 'I-post ang Trabaho'}
           onPress={handleSubmit}
@@ -144,7 +141,7 @@ export default function PostJobScreen() {
           style={styles.submitBtn}
         />
 
-        <View style={{ height: spacing.xxl }} />
+        <View style={{ height: 200 }} />
       </ScrollView>
     </View>
   );

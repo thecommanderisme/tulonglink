@@ -10,6 +10,7 @@ import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
 import com.tulonglink.backend.dto.ApplicationResponse;
 
+import java.util.Map;
 import java.util.List;
 import org.springframework.data.domain.Page;
 
@@ -81,4 +82,29 @@ public ResponseEntity<Page<JobResponse>> getAllJobs(
         Long userId = Long.parseLong(auth.getName());
         return ResponseEntity.ok(jobService.deleteJob(id, userId));
     }
+
+    @GetMapping("/{id}/applications")
+public ResponseEntity<List<ApplicationResponse>> getJobApplications(
+        @PathVariable Long id,
+        Authentication auth) {
+    Long userId = Long.parseLong(auth.getName());
+    return ResponseEntity.ok(jobService.getJobApplications(id, userId));
+}
+
+@PatchMapping("/{id}/applications/{applicationId}")
+public ResponseEntity<String> updateApplicationStatus(
+        @PathVariable Long id,
+        @PathVariable Long applicationId,
+        @RequestBody Map<String, String> body,
+        Authentication auth) {
+    Long userId = Long.parseLong(auth.getName());
+    jobService.updateApplicationStatus(applicationId, body.get("status"), userId);
+    return ResponseEntity.ok("Application status updated");
+}
+
+@GetMapping("/my-posts")
+public ResponseEntity<List<JobResponse>> getMyPostedJobs(Authentication auth) {
+    Long userId = Long.parseLong(auth.getName());
+    return ResponseEntity.ok(jobService.getMyPostedJobs(userId));
+}
 }
