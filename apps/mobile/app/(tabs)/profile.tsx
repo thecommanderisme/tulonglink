@@ -34,6 +34,7 @@ const QUICK_LINKS = [
   { icon: 'search-outline', label: 'Maghanap ng Trabaho', route: '/(tabs)/jobs', color: '#BA7517' },
   { icon: 'medkit-outline', label: 'Mga Serbisyo', route: '/(tabs)/services', color: '#639922' },
   { icon: 'alert-circle-outline', label: 'Emergency Hotlines', route: '/emergency', color: '#E24B4A' },
+  { icon: 'newspaper-outline', label: 'Mga Na-post Kong Trabaho', route: '/my-posts', color: '#BA7517' },
 ];
 
 export default function ProfileScreen() {
