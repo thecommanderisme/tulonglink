@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import {
   View, Text, StyleSheet, ScrollView,
   TouchableOpacity, Modal, ActivityIndicator,
@@ -9,8 +9,10 @@ import { useTranslation } from 'react-i18next';
 import { colors, typography, spacing } from '../../theme';
 import { Card, Badge, Input } from '../../components';
 import { logout } from '../../lib/auth';
+import { logoutApi } from '../../lib/authApi';
 import { useCachedFetch } from '../../lib/useCachedFetch';
 import api from '../../lib/api';
+import { Alert } from 'react-native';
 
 interface Job {
   id: number;
@@ -43,9 +45,35 @@ export default function HomeScreen() {
   const [helpPrivacy, setHelpPrivacy] = useState('PUBLIC');
   const [submitting, setSubmitting] = useState(false);
   const [submitted, setSubmitted] = useState(false);
+  const [userCity, setUserCity] = useState<string | null>(null);
+  const [userName, setUserName] = useState<string | null>(null);
+
+  useEffect(() => {
+    fetchUserInfo();
+  }, []);
+
+  const fetchUserInfo = async () => {
+    try {
+      const response = await api.get('/users/profile');
+      if (response.data?.displayName) {
+        setUserName(response.data.displayName);
+      }
+      if (response.data?.barangayName) {
+        const barangaysRes = await api.get('/barangays');
+        const userBarangay = barangaysRes.data.find(
+          (b: any) => b.name === response.data.barangayName
+        );
+        if (userBarangay) setUserCity(userBarangay.city);
+      }
+    } catch (err) {
+      console.log('Could not fetch user info:', err);
+    }
+  };
+
+  const jobParams = userCity ? { city: userCity } : {};
 
   const { data: jobs, refresh: refreshJobs } =
-    useCachedFetch<Job[]>('/jobs');
+    useCachedFetch<Job[]>('/jobs', jobParams);
   const { data: announcements, refresh: refreshAnnouncements } =
     useCachedFetch<Announcement[]>('/announcements');
   const { data: services, refresh: refreshServices } =
@@ -60,8 +88,22 @@ export default function HomeScreen() {
   };
 
   const handleLogout = async () => {
-    await logout();
-    router.replace('/(auth)/welcome');
+    Alert.alert(
+      'Mag-logout?',
+      'Sigurado ka bang gusto mong mag-logout?',
+      [
+        { text: 'Kanselahin', style: 'cancel' },
+        {
+          text: 'Mag-logout',
+          style: 'destructive',
+          onPress: async () => {
+            await logoutApi();
+            await logout();
+            router.replace('/(auth)/welcome');
+          },
+        },
+      ]
+    );
   };
 
   const handleSubmitHelp = async () => {
@@ -97,6 +139,13 @@ export default function HomeScreen() {
     });
   };
 
+  const getGreeting = () => {
+    const hour = new Date().getHours();
+    if (hour < 12) return `Magandang umaga${userName ? ', ' + userName : ''}! 👋`;
+    if (hour < 18) return `Magandang hapon${userName ? ', ' + userName : ''}! 👋`;
+    return `Magandang gabi${userName ? ', ' + userName : ''}! 👋`;
+  };
+
   return (
     <View style={styles.container}>
       <ScrollView
@@ -112,8 +161,10 @@ export default function HomeScreen() {
         {/* Header */}
         <View style={styles.header}>
           <View>
-            <Text style={styles.greeting}>{t('home.greeting')}</Text>
-            <Text style={styles.subtitle}>{t('home.subtitle')}</Text>
+            <Text style={styles.greeting}>{getGreeting()}</Text>
+            <Text style={styles.subtitle}>
+              {userCity ? `Mga update sa ${userCity}` : t('home.subtitle')}
+            </Text>
           </View>
           <TouchableOpacity onPress={handleLogout}>
             <Text style={styles.logoutText}>Logout</Text>
@@ -149,7 +200,9 @@ export default function HomeScreen() {
         {/* Jobs Section */}
         <View style={styles.section}>
           <View style={styles.sectionHeader}>
-            <Text style={styles.sectionTitle}>Mga Trabaho Ngayon</Text>
+            <Text style={styles.sectionTitle}>
+              {userCity ? `Trabaho sa ${userCity}` : 'Mga Trabaho Ngayon'}
+            </Text>
             <TouchableOpacity onPress={() => router.push('/(tabs)/jobs')}>
               <Text style={styles.seeAll}>Lahat →</Text>
             </TouchableOpacity>
