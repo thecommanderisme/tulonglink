@@ -11,7 +11,6 @@ import { Card, Badge, Input } from '../../components';
 import { useCachedFetch } from '../../lib/useCachedFetch';
 import api from '../../lib/api';
 
-
 interface Job {
   id: number;
   title: string;
@@ -23,14 +22,13 @@ interface Job {
   applicationCount: number;
 }
 
-// Add this interface
 interface Application {
   id: number;
   job: { id: number };
   status: string;
 }
 
-const CATEGORIES = ['Lahat', 'Bahay', 'Pagkain', 'Konstruksiyon', 'Bantay', 'Iba pa'];
+const CATEGORIES = ['Lahat', 'Malapit', 'Bahay', 'Pagkain', 'Konstruksiyon', 'Bantay', 'Iba pa'];
 
 export default function JobsScreen() {
   const [search, setSearch] = useState('');
@@ -41,22 +39,47 @@ export default function JobsScreen() {
   const [reportReason, setReportReason] = useState('');
   const [reportSubmitting, setReportSubmitting] = useState(false);
   const [reportSuccess, setReportSuccess] = useState(false);
+  const [userCity, setUserCity] = useState<string | null>(null);
+
+  useEffect(() => {
+    fetchUserCity();
+  }, []);
+
+  const fetchUserCity = async () => {
+    try {
+      const response = await api.get('/users/profile');
+      if (response.data?.barangayName) {
+        const barangayResponse = await api.get('/barangays');
+        const userBarangay = barangayResponse.data.find(
+          (b: any) => b.name === response.data.barangayName
+        );
+        if (userBarangay) setUserCity(userBarangay.city);
+      }
+    } catch (err) {
+      console.log('Could not fetch user city:', err);
+    }
+  };
 
   const params: any = {};
-  if (selectedCategory !== 'Lahat') params.category = selectedCategory;
+  if (selectedCategory === 'Malapit' && userCity) {
+    params.city = userCity;
+  } else if (selectedCategory !== 'Lahat' && selectedCategory !== 'Malapit') {
+    params.category = selectedCategory;
+  }
   if (search) params.search = search;
 
   const { data: jobs, loading, refresh, isFromCache } =
     useCachedFetch<Job[]>('/jobs', params);
 
-  const { data: myApplications } = useCachedFetch<Application[]>('/jobs/my-applications');
-    // Initialize appliedJobs from existing applications
-    useEffect(() => {
-      if (myApplications && myApplications.length > 0) {
-        const appliedIds = myApplications.map(app => app.job?.id).filter(Boolean);
-        setAppliedJobs(appliedIds);
-      }
-    }, [myApplications]);
+  const { data: myApplications } =
+    useCachedFetch<Application[]>('/jobs/my-applications');
+
+  useEffect(() => {
+    if (myApplications && myApplications.length > 0) {
+      const appliedIds = myApplications.map(app => app.job?.id).filter(Boolean);
+      setAppliedJobs(appliedIds);
+    }
+  }, [myApplications]);
 
   const handleApply = async (jobId: number) => {
     try {
@@ -144,7 +167,7 @@ export default function JobsScreen() {
               styles.categoryText,
               selectedCategory === cat && styles.categoryTextActive
             ]}>
-              {cat}
+              {cat === 'Malapit' ? '📍 Malapit' : cat}
             </Text>
           </TouchableOpacity>
         ))}
@@ -159,6 +182,18 @@ export default function JobsScreen() {
         </View>
       )}
 
+      {/* Malapit info banner */}
+      {selectedCategory === 'Malapit' && (
+        <View style={styles.nearbyBanner}>
+          <Ionicons name="location-outline" size={14} color={colors.primary} />
+          <Text style={styles.nearbyText}>
+            {userCity
+              ? `Mga trabaho sa ${userCity}`
+              : 'Itakda ang iyong barangay para makita ang mga trabaho malapit sa iyo'}
+          </Text>
+        </View>
+      )}
+
       {/* Jobs list */}
       {loading ? (
         <View style={styles.center}>
@@ -166,7 +201,11 @@ export default function JobsScreen() {
         </View>
       ) : !jobs || jobs.length === 0 ? (
         <View style={styles.center}>
-          <Text style={styles.emptyText}>Walang trabaho ngayon</Text>
+          <Text style={styles.emptyText}>
+            {selectedCategory === 'Malapit'
+              ? 'Walang trabaho malapit sa iyo ngayon'
+              : 'Walang trabaho ngayon'}
+          </Text>
           <Text style={styles.emptySubtext}>Subukan ulit mamaya</Text>
         </View>
       ) : (
@@ -362,8 +401,7 @@ const styles = StyleSheet.create({
   },
   searchWrap: {
     paddingHorizontal: spacing.lg,
-    paddingTop: spacing.sm,
-    paddingBottom: 0,
+    paddingVertical: spacing.sm,
     backgroundColor: colors.white,
   },
   categories: {
@@ -407,6 +445,19 @@ const styles = StyleSheet.create({
     color: colors.warning,
     fontWeight: typography.fontWeights.medium,
   },
+  nearbyBanner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.sm,
+    backgroundColor: colors.primaryLight,
+    padding: spacing.sm,
+    paddingHorizontal: spacing.lg,
+  },
+  nearbyText: {
+    fontSize: typography.fontSizes.xs,
+    color: colors.primary,
+    fontWeight: typography.fontWeights.medium,
+  },
   list: { flex: 1, padding: spacing.lg },
   center: {
     flex: 1,
@@ -418,6 +469,7 @@ const styles = StyleSheet.create({
     fontSize: typography.fontSizes.lg,
     fontWeight: typography.fontWeights.medium,
     color: colors.gray600,
+    textAlign: 'center',
   },
   emptySubtext: {
     fontSize: typography.fontSizes.sm,

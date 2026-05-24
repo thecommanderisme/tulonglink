@@ -1,7 +1,7 @@
 import { useState, useCallback } from 'react';
 import {
   View, Text, StyleSheet, ScrollView,
-  TouchableOpacity, ActivityIndicator
+  TouchableOpacity, ActivityIndicator, Alert
 } from 'react-native';
 import { router, useFocusEffect } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
@@ -10,6 +10,7 @@ import { Badge, Button } from '../../components';
 import { logout } from '../../lib/auth';
 import { logoutApi } from '../../lib/authApi';
 import api from '../../lib/api';
+
 
 interface UserProfile {
   id: number;
@@ -61,11 +62,27 @@ export default function ProfileScreen() {
     }
   };
 
-  const handleLogout = async () => {
-    await logoutApi();
-    await logout();
-    router.replace('/(auth)/welcome');
-  };
+const handleLogout = async () => {
+  Alert.alert(
+    'Mag-logout?',
+    'Sigurado ka bang gusto mong mag-logout?',
+    [
+      {
+        text: 'Kanselahin',
+        style: 'cancel',
+      },
+      {
+        text: 'Mag-logout',
+        style: 'destructive',
+        onPress: async () => {
+          await logoutApi();
+          await logout();
+          router.replace('/(auth)/welcome');
+        },
+      },
+    ]
+  );
+};
 
   const getRoleLabel = (role: string) => {
     const labels: Record<string, string> = {

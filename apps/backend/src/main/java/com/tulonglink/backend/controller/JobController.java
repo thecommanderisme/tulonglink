@@ -23,22 +23,25 @@ public class JobController {
         this.jobService = jobService;
     }
 
-    // GET /jobs — get all jobs
-    @GetMapping
-    public ResponseEntity<Page<JobResponse>> getAllJobs(
-            @RequestParam(required = false) String category,
-            @RequestParam(required = false) String search,
-            @RequestParam(defaultValue = "0") int page,
-            @RequestParam(defaultValue = "20") int size) {
+@GetMapping
+public ResponseEntity<Page<JobResponse>> getAllJobs(
+        @RequestParam(required = false) String category,
+        @RequestParam(required = false) String search,
+        @RequestParam(required = false) String city,
+        @RequestParam(defaultValue = "0") int page,
+        @RequestParam(defaultValue = "20") int size) {
 
-        if (search != null && !search.isEmpty()) {
-            return ResponseEntity.ok(jobService.searchJobs(search, page, size));
-        }
-        if (category != null && !category.isEmpty()) {
-            return ResponseEntity.ok(jobService.getJobsByCategory(category, page, size));
-        }
-        return ResponseEntity.ok(jobService.getAllJobs(page, size));
+    if (search != null && !search.isEmpty()) {
+        return ResponseEntity.ok(jobService.searchJobs(search, page, size));
     }
+    if (city != null && !city.isEmpty()) {
+        return ResponseEntity.ok(jobService.getJobsByCity(city, page, size));
+    }
+    if (category != null && !category.isEmpty()) {
+        return ResponseEntity.ok(jobService.getJobsByCategory(category, page, size));
+    }
+    return ResponseEntity.ok(jobService.getAllJobs(page, size));
+}
 
     @GetMapping("/my-applications")
     public ResponseEntity<List<ApplicationResponse>> getMyApplications(Authentication auth) {

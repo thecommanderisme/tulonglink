@@ -23,4 +23,7 @@ public interface JobRepository extends JpaRepository<Job, Long> {
     Page<Job> searchByTitle(String keyword, Pageable pageable);
 
     List<Job> findByBarangayIdAndDeletedAtIsNullOrderByCreatedAtDesc(Long barangayId);
+
+    @Query("SELECT j FROM Job j WHERE j.deletedAt IS NULL AND (j.dateNeeded IS NULL OR j.dateNeeded > :now) AND j.barangay.city = :city ORDER BY j.createdAt DESC")
+Page<Job> findByCity(String city, Pageable pageable, LocalDateTime now);
 }

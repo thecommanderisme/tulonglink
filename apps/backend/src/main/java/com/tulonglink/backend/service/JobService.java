@@ -109,6 +109,12 @@ public class JobService {
                 .collect(Collectors.toList());
     }
 
+    public Page<JobResponse> getJobsByCity(String city, int page, int size) {
+    Pageable pageable = PageRequest.of(page, size);
+    return jobRepository.findByCity(city, pageable, LocalDateTime.now())
+            .map(this::toResponse);
+        }
+
     // Apply for a job
     public String applyForJob(Long jobId, Long userId) {
         // Check if job exists

@@ -23,26 +23,31 @@ const handleVerify = async () => {
   setError('');
   setLoading(true);
   try {
-    const response = await verifyOtp(phone, otp);
-    
-    // Check if user already has a barangay set
+    await verifyOtp(phone, otp);
+
+    // Check if returning user
     try {
       const profileResponse = await api.get('/users/profile');
       if (profileResponse.data?.barangayId) {
-        // Already has barangay — go straight to home
         router.replace('/(tabs)');
-      } else {
-        // New user — go to barangay picker
+      } else if (profileResponse.data?.displayName) {
+        // Has name but no barangay — go to barangay picker
         router.replace({
           pathname: '/(auth)/barangay',
           params: { isOnboarding: 'true' }
         });
+      } else {
+        // Brand new user — go through full onboarding
+        router.replace({
+          pathname: '/(auth)/onboarding',
+          params: { phone }
+        });
       }
     } catch {
-      // No profile yet — go to barangay picker
+      // No profile — new user
       router.replace({
-        pathname: '/(auth)/barangay',
-        params: { isOnboarding: 'true' }
+        pathname: '/(auth)/onboarding',
+        params: { phone }
       });
     }
   } catch (err: any) {
