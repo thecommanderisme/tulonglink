@@ -128,10 +128,14 @@ export default function JobDetailScreen() {
                 <Text style={styles.metaText}>{job.category}</Text>
               </View>
             )}
-            <View style={styles.metaRow}>
-              <Ionicons name="people-outline" size={18} color={colors.primary} />
-              <Text style={styles.metaText}>{job.applicationCount} nag-apply na</Text>
-            </View>
+            {job.status === 'FILLED' && (
+                <View style={styles.metaRow}>
+                    <Ionicons name="checkmark-circle-outline" size={18} color={colors.success} />
+                    <Text style={[styles.metaText, { color: colors.success }]}>
+                    Napili na ang manggagawa para sa trabahong ito
+                    </Text>
+                </View>
+                )}
             {job.postedBy && (
               <View style={styles.metaRow}>
                 <Ionicons name="person-outline" size={18} color={colors.primary} />
@@ -307,7 +311,7 @@ const styles = StyleSheet.create({
   },
   scamText: {
     fontSize: typography.fontSizes.sm,
-    color: colors.gray700,
+    color: colors.gray400,
     lineHeight: 20,
   },
   reportScamBtn: {

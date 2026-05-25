@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import {
   View, Text, StyleSheet, ScrollView,
   TouchableOpacity, Alert
@@ -17,8 +17,25 @@ export default function PostJobScreen() {
   const [pay, setPay] = useState('');
   const [location, setLocation] = useState('');
   const [expiresAt, setExpiresAt] = useState('');
+  const [selectedBarangay, setSelectedBarangay] = useState<any>(null);
+  const [barangays, setBarangays] = useState<any[]>([]);
+  const [showBarangayPicker, setShowBarangayPicker] = useState(false);
+  const [barangaySearch, setBarangaySearch] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
+
+  useEffect(() => {
+    fetchBarangays();
+  }, []);
+
+  const fetchBarangays = async () => {
+    try {
+      const response = await api.get('/barangays');
+      setBarangays(response.data);
+    } catch (err) {
+      console.log('Barangay fetch error:', err);
+    }
+  };
 
   const validate = () => {
     const newErrors: Record<string, string> = {};
@@ -40,6 +57,7 @@ export default function PostJobScreen() {
         pay: pay.trim(),
         location: location.trim(),
         dateNeeded: expiresAt ? `${expiresAt}T23:59:59` : null,
+        barangayId: selectedBarangay?.id || null,
       });
       Alert.alert(
         'Na-post na! ✅',
@@ -47,18 +65,28 @@ export default function PostJobScreen() {
         [{ text: 'OK', onPress: () => router.back() }]
       );
     } catch (err: any) {
-      Alert.alert('Error', err.response?.data?.message || 'Hindi ma-post. Subukan ulit.');
+      Alert.alert(
+        'Error',
+        err.response?.data?.message || 'Hindi ma-post. Subukan ulit.'
+      );
     } finally {
       setSubmitting(false);
     }
   };
+
+  const filteredBarangays = barangays.filter(b =>
+    b.displayName.toLowerCase().includes(barangaySearch.toLowerCase())
+  );
 
   return (
     <View style={styles.container}>
 
       {/* Header */}
       <View style={styles.header}>
-        <TouchableOpacity onPress={() => router.back()} style={styles.backBtn}>
+        <TouchableOpacity
+          onPress={() => router.back()}
+          style={styles.backBtn}
+        >
           <Ionicons name="arrow-back" size={24} color={colors.white} />
         </TouchableOpacity>
         <Text style={styles.headerTitle}>Mag-post ng Trabaho</Text>
@@ -78,6 +106,7 @@ export default function PostJobScreen() {
           </Text>
         </View>
 
+        {/* Title */}
         <Input
           label="Titulo ng Trabaho *"
           placeholder="Halimbawa: Labandera, Tagaluto, Bantay Bahay"
@@ -86,6 +115,7 @@ export default function PostJobScreen() {
           error={errors.title}
         />
 
+        {/* Category */}
         <Text style={styles.fieldLabel}>Kategorya *</Text>
         {errors.category && (
           <Text style={styles.errorText}>{errors.category}</Text>
@@ -110,6 +140,7 @@ export default function PostJobScreen() {
           ))}
         </View>
 
+        {/* Pay */}
         <Input
           label="Bayad *"
           placeholder="Halimbawa: ₱300/araw, ₱500/buwanin"
@@ -118,6 +149,7 @@ export default function PostJobScreen() {
           error={errors.pay}
         />
 
+        {/* Location */}
         <Input
           label="Lokasyon *"
           placeholder="Halimbawa: Barangay 123, Maynila"
@@ -126,6 +158,83 @@ export default function PostJobScreen() {
           error={errors.location}
         />
 
+        {/* Barangay */}
+        <Text style={styles.fieldLabel}>Barangay (Optional)</Text>
+        <TouchableOpacity
+          style={styles.barangaySelector}
+          onPress={() => setShowBarangayPicker(!showBarangayPicker)}
+        >
+          <Ionicons name="location-outline" size={18} color={colors.gray400} />
+          <Text style={[
+            styles.barangaySelectorText,
+            !selectedBarangay && { color: colors.gray400 }
+          ]}>
+            {selectedBarangay?.displayName || 'Pumili ng barangay...'}
+          </Text>
+          <Ionicons
+            name={showBarangayPicker ? 'chevron-up' : 'chevron-down'}
+            size={18}
+            color={colors.gray400}
+          />
+        </TouchableOpacity>
+
+        {/* Barangay Picker */}
+        {showBarangayPicker && (
+          <View style={styles.barangayModal}>
+            <View style={styles.barangayModalHeader}>
+              <Text style={styles.barangayModalTitle}>Piliin ang Barangay</Text>
+              <TouchableOpacity onPress={() => {
+                setShowBarangayPicker(false);
+                setBarangaySearch('');
+              }}>
+                <Ionicons name="close" size={24} color={colors.gray600} />
+              </TouchableOpacity>
+            </View>
+            <Input
+              placeholder="Maghanap..."
+              value={barangaySearch}
+              onChangeText={setBarangaySearch}
+              containerStyle={{ marginBottom: spacing.sm }}
+            />
+            <ScrollView style={{ maxHeight: 200 }} nestedScrollEnabled>
+              {filteredBarangays.map(b => (
+                <TouchableOpacity
+                  key={b.id}
+                  style={[
+                    styles.barangayItem,
+                    selectedBarangay?.id === b.id && styles.barangayItemSelected
+                  ]}
+                  onPress={() => {
+                    setSelectedBarangay(b);
+                    setShowBarangayPicker(false);
+                    setBarangaySearch('');
+                  }}
+                >
+                  <Ionicons
+                    name={selectedBarangay?.id === b.id
+                      ? 'radio-button-on'
+                      : 'radio-button-off'}
+                    size={18}
+                    color={selectedBarangay?.id === b.id
+                      ? colors.primary
+                      : colors.gray400}
+                  />
+                  <Text style={[
+                    styles.barangayItemText,
+                    selectedBarangay?.id === b.id && {
+                      color: colors.primary,
+                      fontWeight: typography.fontWeights.medium
+                    }
+                  ]}>
+                    {b.displayName}
+                  </Text>
+                </TouchableOpacity>
+              ))}
+            </ScrollView>
+          </View>
+        )}
+
+        {/* Expiry date */}
         <Input
           label="Hanggang kailan kailangan? (Optional)"
           placeholder="Halimbawa: 2026-06-30"
@@ -133,6 +242,7 @@ export default function PostJobScreen() {
           onChangeText={setExpiresAt}
         />
 
+        {/* Submit */}
         <Button
           label={submitting ? 'Nagpo-post...' : 'I-post ang Trabaho'}
           onPress={handleSubmit}
@@ -141,7 +251,7 @@ export default function PostJobScreen() {
           style={styles.submitBtn}
         />
 
-        <View style={{ height: 200 }} />
+        <View style={{ height: spacing.xxl }} />
       </ScrollView>
     </View>
   );
@@ -217,7 +327,53 @@ const styles = StyleSheet.create({
     fontWeight: typography.fontWeights.medium,
   },
   categoryTextActive: { color: colors.white },
-  submitBtn: {
-    marginTop: spacing.md,
+  barangaySelector: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.sm,
+    borderWidth: 1,
+    borderColor: colors.gray200,
+    borderRadius: 10,
+    padding: spacing.md,
+    paddingHorizontal: spacing.lg,
+    backgroundColor: colors.white,
+    marginBottom: spacing.sm,
   },
+  barangaySelectorText: {
+    flex: 1,
+    fontSize: typography.fontSizes.md,
+    color: colors.gray900,
+  },
+  barangayModal: {
+    backgroundColor: colors.white,
+    borderRadius: 12,
+    padding: spacing.lg,
+    marginBottom: spacing.lg,
+    borderWidth: 0.5,
+    borderColor: colors.gray200,
+  },
+  barangayModalHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: spacing.md,
+  },
+  barangayModalTitle: {
+    fontSize: typography.fontSizes.md,
+    fontWeight: typography.fontWeights.bold,
+    color: colors.gray900,
+  },
+  barangayItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.sm,
+    padding: spacing.sm,
+    borderRadius: 8,
+  },
+  barangayItemSelected: { backgroundColor: colors.primaryLight },
+  barangayItemText: {
+    fontSize: typography.fontSizes.sm,
+    color: colors.gray900,
+  },
+  submitBtn: { marginTop: spacing.md },
 });

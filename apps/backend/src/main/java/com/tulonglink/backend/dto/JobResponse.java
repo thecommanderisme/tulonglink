@@ -18,9 +18,17 @@ public class JobResponse {
     private String pay;
     private String location;
     private String status;
-    private String postedBy;
+    private String postedBy;         // display name or phone
+    private String postedByPhone;    // employer phone (shown when hired)
+    private Long postedById;
     private String barangay;
+    private String city;             // for filtering
     private LocalDateTime createdAt;
     private int applicationCount;
-    private Long postedById;
+
+    // Job details
+    private String description;
+    private String requirements;
+    private String workSchedule;
+    private LocalDateTime dateNeeded;
 }

@@ -233,7 +233,10 @@ export default function JobsScreen() {
                 <View style={styles.jobHeader}>
                   <Text style={styles.jobTitle}>{job.title}</Text>
                   <Badge
-                    label={job.status === 'OPEN' ? 'Bukas' : 'Sarado'}
+                    label={
+                      job.status === 'OPEN' ? 'Bukas' :
+                      job.status === 'FILLED' ? 'Napuno' : 'Sarado'
+                    }
                     variant={job.status === 'OPEN' ? 'success' : 'neutral'}
                   />
                 </View>
@@ -253,17 +256,26 @@ export default function JobsScreen() {
                       e.stopPropagation();
                       handleApply(job.id);
                     }}
-                    disabled={applying === job.id || appliedJobs.includes(job.id)}
+                    disabled={
+                      applying === job.id ||
+                      appliedJobs.includes(job.id) ||
+                      job.status !== 'OPEN'
+                    }
                     style={[
                       styles.applyBtn,
-                      appliedJobs.includes(job.id) && styles.applyBtnDone
+                      appliedJobs.includes(job.id) && styles.applyBtnDone,
+                      job.status !== 'OPEN' && styles.applyBtnClosed
                     ]}
                   >
                     {applying === job.id ? (
                       <ActivityIndicator color={colors.white} size="small" />
                     ) : (
                       <Text style={styles.applyText}>
-                        {appliedJobs.includes(job.id) ? 'Nag-apply na ✓' : 'Mag-apply'}
+                        {appliedJobs.includes(job.id)
+                          ? 'Nag-apply na ✓'
+                          : job.status !== 'OPEN'
+                          ? 'Sarado na'
+                          : 'Mag-apply'}
                       </Text>
                     )}
                   </TouchableOpacity>
@@ -514,6 +526,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   applyBtnDone: { backgroundColor: colors.success },
+  applyBtnClosed: { backgroundColor: colors.gray400 },
   applyText: {
     fontSize: typography.fontSizes.sm,
     color: colors.white,

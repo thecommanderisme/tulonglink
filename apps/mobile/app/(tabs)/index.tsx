@@ -70,7 +70,7 @@ export default function HomeScreen() {
     }
   };
 
-  const jobParams = userCity ? { city: userCity } : {};
+const jobParams = {};  // Show all jobs on home screen, not filtered by city
 
   const { data: jobs, refresh: refreshJobs } =
     useCachedFetch<Job[]>('/jobs', jobParams);

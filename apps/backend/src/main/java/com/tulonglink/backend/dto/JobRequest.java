@@ -15,4 +15,7 @@ public class JobRequest {
     private String dateNeeded;
     private Long barangayId;
     private Long organizationId;
+    private String description;
+    private String requirements;
+    private String workSchedule;
 }

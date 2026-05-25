@@ -1,9 +1,9 @@
-import { useState, useEffect } from 'react';
+import { useState, useCallback } from 'react';
 import {
   View, Text, StyleSheet, ScrollView,
-  TouchableOpacity, ActivityIndicator, RefreshControl
+  TouchableOpacity, ActivityIndicator, RefreshControl, Alert
 } from 'react-native';
-import { router } from 'expo-router';
+import { router, useFocusEffect } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { colors, typography, spacing } from '../theme';
 import { Card, Badge } from '../components';
@@ -24,10 +24,10 @@ interface Application {
 }
 
 const STATUS_CONFIG: Record<string, { label: string; variant: any; icon: string }> = {
-  APPLIED: { label: 'Nag-apply', variant: 'primary', icon: 'time-outline' },
-  SHORTLISTED: { label: 'Shortlisted', variant: 'warning', icon: 'star-outline' },
-  FILLED: { label: 'Napili', variant: 'success', icon: 'checkmark-circle-outline' },
-  REJECTED: { label: 'Hindi napili', variant: 'danger', icon: 'close-circle-outline' },
+  APPLIED: { label: 'Nag-apply', variant: 'neutral', icon: 'time-outline' },
+  SHORTLISTED: { label: '⭐ Interesado sila!', variant: 'warning', icon: 'star-outline' },
+  HIRED: { label: '🎉 Napili ka!', variant: 'success', icon: 'checkmark-circle-outline' },
+  REJECTED: { label: 'Hindi napili', variant: 'neutral', icon: 'close-circle-outline' },
 };
 
 export default function MyApplicationsScreen() {
@@ -35,9 +35,11 @@ export default function MyApplicationsScreen() {
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
 
-  useEffect(() => {
-    fetchApplications();
-  }, []);
+  useFocusEffect(
+    useCallback(() => {
+      fetchApplications();
+    }, [])
+  );
 
   const fetchApplications = async () => {
     try {
@@ -54,6 +56,28 @@ export default function MyApplicationsScreen() {
     setRefreshing(true);
     await fetchApplications();
     setRefreshing(false);
+  };
+
+  const handleWithdraw = async (jobId: number, applicationId: number) => {
+    Alert.alert(
+      'Bawiin ang Application?',
+      'Aalisin ang iyong application sa job post na ito.',
+      [
+        { text: 'Kanselahin', style: 'cancel' },
+        {
+          text: 'Bawiin',
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              await api.delete(`/jobs/${jobId}/apply`);
+              setApplications(prev => prev.filter(a => a.id !== applicationId));
+            } catch (err: any) {
+              Alert.alert('Error', err.response?.data?.message || 'Hindi mababawi. Subukan ulit.');
+            }
+          },
+        },
+      ]
+    );
   };
 
   const formatDate = (dateStr: string) => {
@@ -122,9 +146,11 @@ export default function MyApplicationsScreen() {
                   <Ionicons
                     name={statusConfig.icon as any}
                     size={16}
-                    color={colors[statusConfig.variant === 'primary' ? 'secondary' :
-                      statusConfig.variant === 'warning' ? 'warning' :
-                      statusConfig.variant === 'success' ? 'success' : 'danger']}
+                    color={
+                      app.status === 'HIRED' ? colors.success :
+                      app.status === 'SHORTLISTED' ? colors.warning :
+                      colors.gray400
+                    }
                   />
                   <Badge
                     label={statusConfig.label}
@@ -145,6 +171,25 @@ export default function MyApplicationsScreen() {
                   )}
                 </View>
 
+                {/* Hired banner */}
+                {app.status === 'HIRED' && (
+                  <View style={styles.hiredBanner}>
+                    <Text style={styles.hiredTitle}>🎉 Binabati kita!</Text>
+                    <Text style={styles.hiredText}>
+                      Napili ka para sa trabahong ito. Makikipag-ugnayan sa iyo ang employer.
+                    </Text>
+                  </View>
+                )}
+
+                {/* Shortlisted banner */}
+                {app.status === 'SHORTLISTED' && (
+                  <View style={styles.shortlistBanner}>
+                    <Text style={styles.shortlistText}>
+                      ⭐ Interesado ang employer sa iyong application! Maaaring makipag-ugnayan sila sa iyo.
+                    </Text>
+                  </View>
+                )}
+
                 {/* View job button */}
                 <TouchableOpacity
                   style={styles.viewJobBtn}
@@ -155,6 +200,16 @@ export default function MyApplicationsScreen() {
                 >
                   <Text style={styles.viewJobText}>Tingnan ang Job Post →</Text>
                 </TouchableOpacity>
+
+                {/* Withdraw button — only for APPLIED status */}
+                {app.status === 'APPLIED' && (
+                  <TouchableOpacity
+                    style={styles.withdrawBtn}
+                    onPress={() => handleWithdraw(app.job?.id, app.id)}
+                  >
+                    <Text style={styles.withdrawText}>Bawiin ang Application</Text>
+                  </TouchableOpacity>
+                )}
               </Card>
             );
           })}
@@ -239,6 +294,38 @@ const styles = StyleSheet.create({
     fontSize: typography.fontSizes.sm,
     color: colors.gray600,
   },
+  hiredBanner: {
+    backgroundColor: colors.successLight,
+    borderRadius: 8,
+    padding: spacing.md,
+    marginBottom: spacing.sm,
+    borderWidth: 1,
+    borderColor: colors.success,
+  },
+  hiredTitle: {
+    fontSize: typography.fontSizes.md,
+    fontWeight: typography.fontWeights.bold,
+    color: colors.success,
+    marginBottom: 4,
+  },
+  hiredText: {
+    fontSize: typography.fontSizes.sm,
+    color: colors.success,
+    lineHeight: 20,
+  },
+  shortlistBanner: {
+    backgroundColor: colors.warningLight,
+    borderRadius: 8,
+    padding: spacing.md,
+    marginBottom: spacing.sm,
+    borderWidth: 1,
+    borderColor: colors.warning,
+  },
+  shortlistText: {
+    fontSize: typography.fontSizes.sm,
+    color: colors.warning,
+    lineHeight: 20,
+  },
   viewJobBtn: {
     borderTopWidth: 0.5,
     borderTopColor: colors.gray200,
@@ -248,6 +335,18 @@ const styles = StyleSheet.create({
   viewJobText: {
     fontSize: typography.fontSizes.sm,
     color: colors.primary,
+    fontWeight: typography.fontWeights.medium,
+  },
+  withdrawBtn: {
+    alignItems: 'center',
+    paddingTop: spacing.sm,
+    marginTop: spacing.xs,
+    borderTopWidth: 0.5,
+    borderTopColor: colors.gray200,
+  },
+  withdrawText: {
+    fontSize: typography.fontSizes.xs,
+    color: colors.danger,
     fontWeight: typography.fontWeights.medium,
   },
 });

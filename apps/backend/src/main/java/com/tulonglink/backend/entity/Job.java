@@ -16,6 +16,15 @@ public class Job {
     @Column(nullable = false)
     private String title;
 
+    @Column(columnDefinition = "TEXT")
+    private String description;
+
+    @Column(columnDefinition = "TEXT")
+    private String requirements;
+
+    @Column
+    private String workSchedule;
+
     @Column
     private String category;
 

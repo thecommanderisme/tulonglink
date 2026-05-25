@@ -25,7 +25,20 @@ public interface JobRepository extends JpaRepository<Job, Long> {
     List<Job> findByBarangayIdAndDeletedAtIsNullOrderByCreatedAtDesc(Long barangayId);
 
     @Query("SELECT j FROM Job j WHERE j.deletedAt IS NULL AND (j.dateNeeded IS NULL OR j.dateNeeded > :now) AND j.barangay.city = :city ORDER BY j.createdAt DESC")
-Page<Job> findByCity(String city, Pageable pageable, LocalDateTime now);
+    Page<Job> findByCity(String city, Pageable pageable, LocalDateTime now);
 
-List<Job> findByPostedByUserIdAndDeletedAtIsNullOrderByCreatedAtDesc(Long userId);
+    List<Job> findByPostedByUserIdAndDeletedAtIsNullOrderByCreatedAtDesc(Long userId);
+
+    // Exclude current user's posts
+    @Query("SELECT j FROM Job j WHERE j.deletedAt IS NULL AND (j.dateNeeded IS NULL OR j.dateNeeded > :now) AND j.postedByUser.id != :userId ORDER BY j.createdAt DESC")
+    Page<Job> findByDeletedAtIsNullAndNotPostedBy(Pageable pageable, LocalDateTime now, Long userId);
+
+    @Query("SELECT j FROM Job j WHERE j.deletedAt IS NULL AND j.category = :category AND (j.dateNeeded IS NULL OR j.dateNeeded > :now) AND j.postedByUser.id != :userId ORDER BY j.createdAt DESC")
+    Page<Job> findByCategoryAndDeletedAtIsNullAndNotPostedBy(String category, Pageable pageable, LocalDateTime now, Long userId);
+
+    @Query("SELECT j FROM Job j WHERE j.deletedAt IS NULL AND LOWER(j.title) LIKE LOWER(CONCAT('%', :keyword, '%')) AND j.postedByUser.id != :userId")
+    Page<Job> searchByTitleAndNotPostedBy(String keyword, Pageable pageable, Long userId);
+
+    @Query("SELECT j FROM Job j WHERE j.deletedAt IS NULL AND (j.dateNeeded IS NULL OR j.dateNeeded > :now) AND j.barangay.city = :city AND j.postedByUser.id != :userId ORDER BY j.createdAt DESC")
+    Page<Job> findByCityAndNotPostedBy(String city, Pageable pageable, LocalDateTime now, Long userId);
 }
