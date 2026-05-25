@@ -31,4 +31,6 @@ public class JobResponse {
     private String requirements;
     private String workSchedule;
     private LocalDateTime dateNeeded;
+    private String workType;
+    private String contactPref;
 }

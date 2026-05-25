@@ -23,6 +23,12 @@ public class Job {
     private String requirements;
 
     @Column
+    private String workType;
+
+    @Column
+    private String contactPref;
+
+    @Column
     private String workSchedule;
 
     @Column

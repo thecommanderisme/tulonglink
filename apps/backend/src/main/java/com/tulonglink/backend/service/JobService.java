@@ -53,6 +53,18 @@ public class JobService {
                 .map(this::toResponse);
     }
 
+    public void reopenJob(Long jobId, Long userId) {
+        Job job = jobRepository.findById(jobId)
+                .orElseThrow(() -> new RuntimeException("Job not found"));
+
+        if (!job.getPostedByUser().getId().equals(userId)) {
+            throw new RuntimeException("You can only reopen your own jobs");
+        }
+
+        job.setStatus("OPEN");
+        jobRepository.save(job);
+    }
+
     public Page<JobResponse> getJobsByCategory(String category, int page, int size, Long userId) {
         Pageable pageable = PageRequest.of(page, size);
         if (userId != null) {
@@ -90,6 +102,7 @@ public class JobService {
     }
 
     public JobResponse createJob(JobRequest request, Long userId) {
+        System.out.println("Creating job - workType: " + request.getWorkType() + ", contactPref: " + request.getContactPref() + ", description: " + request.getDescription());
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new RuntimeException("User not found"));
 
@@ -126,6 +139,8 @@ public class JobService {
         if (request.getDescription() != null) job.setDescription(request.getDescription());
         if (request.getRequirements() != null) job.setRequirements(request.getRequirements());
         if (request.getWorkSchedule() != null) job.setWorkSchedule(request.getWorkSchedule());
+        if (request.getWorkType() != null) job.setWorkType(request.getWorkType());
+        if (request.getContactPref() != null) job.setContactPref(request.getContactPref());
 
         Job saved = jobRepository.save(job);
         return toResponse(saved);
@@ -207,6 +222,8 @@ public class JobService {
         if (request.getDescription() != null) job.setDescription(request.getDescription());
         if (request.getRequirements() != null) job.setRequirements(request.getRequirements());
         if (request.getWorkSchedule() != null) job.setWorkSchedule(request.getWorkSchedule());
+        if (request.getWorkType() != null) job.setWorkType(request.getWorkType());
+        if (request.getContactPref() != null) job.setContactPref(request.getContactPref());
         if (request.getDateNeeded() != null && !request.getDateNeeded().isEmpty()) {
             try {
                 job.setDateNeeded(LocalDateTime.parse(request.getDateNeeded(),
@@ -276,6 +293,8 @@ public class JobService {
                 .createdAt(job.getCreatedAt())
                 .applicationCount(appCount)
                 .dateNeeded(job.getDateNeeded())
+                .workType(job.getWorkType())
+                .contactPref(job.getContactPref())
                 .build();
     }
 

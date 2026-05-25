@@ -26,6 +26,8 @@ interface Job {
   description: string;
   requirements: string;
   workSchedule: string;
+  workType: string;
+  contactPref: string;
   dateNeeded: string;
 }
 
@@ -186,6 +188,18 @@ export default function JobDetailScreen() {
               <View style={styles.metaRow}>
                 <Ionicons name="time-outline" size={18} color={colors.primary} />
                 <Text style={styles.metaText}>{job.workSchedule}</Text>
+              </View>
+            )}
+            {job.workType && (
+              <View style={styles.metaRow}>
+                <Ionicons name="briefcase-outline" size={18} color={colors.primary} />
+                <Text style={styles.metaText}>{job.workType}</Text>
+              </View>
+            )}
+            {job.contactPref && (
+              <View style={styles.metaRow}>
+                <Ionicons name="chatbubble-outline" size={18} color={colors.primary} />
+                <Text style={styles.metaText}>Contact: {job.contactPref}</Text>
               </View>
             )}
             {job.dateNeeded && (

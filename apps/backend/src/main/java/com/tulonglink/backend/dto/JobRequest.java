@@ -18,4 +18,6 @@ public class JobRequest {
     private String description;
     private String requirements;
     private String workSchedule;
+    private String workType;
+    private String contactPref;
 }

@@ -53,6 +53,15 @@ public class JobController {
         return ResponseEntity.ok(jobService.getMyApplications(userId));
     }
 
+    @PatchMapping("/{id}/reopen")
+    public ResponseEntity<String> reopenJob(
+            @PathVariable Long id,
+            Authentication auth) {
+        Long userId = Long.parseLong(auth.getName());
+        jobService.reopenJob(id, userId);
+        return ResponseEntity.ok("Job reopened successfully");
+    }
+
     @GetMapping("/{id}")
     public ResponseEntity<JobResponse> getJob(@PathVariable Long id) {
         return ResponseEntity.ok(jobService.getJob(id));
