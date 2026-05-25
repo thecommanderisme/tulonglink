@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import {
   View, Text, StyleSheet, ScrollView,
-  TouchableOpacity, Alert
+  TouchableOpacity, Alert, Platform
 } from 'react-native';
 import { router } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
@@ -10,17 +10,23 @@ import { Input, Button } from '../components';
 import api from '../lib/api';
 
 const CATEGORIES = ['Bahay', 'Pagkain', 'Konstruksiyon', 'Bantay', 'Kalusugan', 'Iba pa'];
+const WORK_TYPES = ['Isang beses', 'Part-time', 'Full-time', 'Regular'];
+const CONTACT_PREFS = ['Text lang', 'Tawag lang', 'Text o Tawag', 'Personal na pumunta'];
 
 export default function PostJobScreen() {
   const [title, setTitle] = useState('');
   const [category, setCategory] = useState('');
   const [pay, setPay] = useState('');
-  const [location, setLocation] = useState('');
-  const [expiresAt, setExpiresAt] = useState('');
+  const [description, setDescription] = useState('');
+  const [requirements, setRequirements] = useState('');
+  const [workSchedule, setWorkSchedule] = useState('');
+  const [workType, setWorkType] = useState('');
+  const [contactPref, setContactPref] = useState('');
   const [selectedBarangay, setSelectedBarangay] = useState<any>(null);
   const [barangays, setBarangays] = useState<any[]>([]);
   const [showBarangayPicker, setShowBarangayPicker] = useState(false);
   const [barangaySearch, setBarangaySearch] = useState('');
+  const [expiresAt, setExpiresAt] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
 
@@ -42,7 +48,7 @@ export default function PostJobScreen() {
     if (!title.trim()) newErrors.title = 'Ilagay ang titulo ng trabaho';
     if (!category) newErrors.category = 'Pumili ng kategorya';
     if (!pay.trim()) newErrors.pay = 'Ilagay ang bayad';
-    if (!location.trim()) newErrors.location = 'Ilagay ang lokasyon';
+    if (!selectedBarangay) newErrors.barangay = 'Pumili ng barangay';
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
   };
@@ -55,9 +61,12 @@ export default function PostJobScreen() {
         title: title.trim(),
         category,
         pay: pay.trim(),
-        location: location.trim(),
+        location: selectedBarangay?.displayName || '',
         dateNeeded: expiresAt ? `${expiresAt}T23:59:59` : null,
         barangayId: selectedBarangay?.id || null,
+        description: description.trim() || null,
+        requirements: requirements.trim() || null,
+        workSchedule: workSchedule.trim() || null,
       });
       Alert.alert(
         'Na-post na! ✅',
@@ -106,7 +115,9 @@ export default function PostJobScreen() {
           </Text>
         </View>
 
-        {/* Title */}
+        {/* Section: Basic Info */}
+        <Text style={styles.sectionLabel}>Basic Info</Text>
+
         <Input
           label="Titulo ng Trabaho *"
           placeholder="Halimbawa: Labandera, Tagaluto, Bantay Bahay"
@@ -115,24 +126,23 @@ export default function PostJobScreen() {
           error={errors.title}
         />
 
-        {/* Category */}
         <Text style={styles.fieldLabel}>Kategorya *</Text>
         {errors.category && (
           <Text style={styles.errorText}>{errors.category}</Text>
         )}
-        <View style={styles.categories}>
+        <View style={styles.chipGrid}>
           {CATEGORIES.map(cat => (
             <TouchableOpacity
               key={cat}
               onPress={() => setCategory(cat)}
               style={[
-                styles.categoryBtn,
-                category === cat && styles.categoryBtnActive
+                styles.chip,
+                category === cat && styles.chipActive
               ]}
             >
               <Text style={[
-                styles.categoryText,
-                category === cat && styles.categoryTextActive
+                styles.chipText,
+                category === cat && styles.chipTextActive
               ]}>
                 {cat}
               </Text>
@@ -140,28 +150,26 @@ export default function PostJobScreen() {
           ))}
         </View>
 
-        {/* Pay */}
         <Input
           label="Bayad *"
-          placeholder="Halimbawa: ₱300/araw, ₱500/buwanin"
+          placeholder="Halimbawa: ₱300/araw, ₱500/linggo"
           value={pay}
           onChangeText={setPay}
           error={errors.pay}
         />
 
-        {/* Location */}
-        <Input
-          label="Lokasyon *"
-          placeholder="Halimbawa: Barangay 123, Maynila"
-          value={location}
-          onChangeText={setLocation}
-          error={errors.location}
-        />
+        {/* Section: Location */}
+        <Text style={styles.sectionLabel}>Lokasyon</Text>
 
-        {/* Barangay */}
-        <Text style={styles.fieldLabel}>Barangay (Optional)</Text>
+        <Text style={styles.fieldLabel}>Barangay *</Text>
+        {errors.barangay && (
+          <Text style={styles.errorText}>{errors.barangay}</Text>
+        )}
         <TouchableOpacity
-          style={styles.barangaySelector}
+          style={[
+            styles.barangaySelector,
+            errors.barangay ? { borderColor: colors.danger } : {}
+          ]}
           onPress={() => setShowBarangayPicker(!showBarangayPicker)}
         >
           <Ionicons name="location-outline" size={18} color={colors.gray400} />
@@ -178,7 +186,6 @@ export default function PostJobScreen() {
           />
         </TouchableOpacity>
 
-        {/* Barangay Picker */}
         {showBarangayPicker && (
           <View style={styles.barangayModal}>
             <View style={styles.barangayModalHeader}>
@@ -234,15 +241,88 @@ export default function PostJobScreen() {
           </View>
         )}
 
-        {/* Expiry date */}
+        {/* Section: Job Details */}
+        <Text style={styles.sectionLabel}>Detalye ng Trabaho</Text>
+
+        <Input
+          label="Paglalarawan (Optional)"
+          placeholder="Halimbawa: Kailangan ng labandera 3x sa isang linggo para sa isang pamilya..."
+          value={description}
+          onChangeText={setDescription}
+          multiline
+          numberOfLines={3}
+        />
+
+        <Input
+          label="Mga Kinakailangan (Optional)"
+          placeholder="Halimbawa: May sariling plantsa, 18+ taong gulang, may barangay clearance..."
+          value={requirements}
+          onChangeText={setRequirements}
+          multiline
+          numberOfLines={3}
+        />
+
+        <Input
+          label="Oras ng Trabaho (Optional)"
+          placeholder="Halimbawa: Lunes-Miyerkules, 7am-12pm"
+          value={workSchedule}
+          onChangeText={setWorkSchedule}
+        />
+
+        {/* Work Type */}
+        <Text style={styles.fieldLabel}>Uri ng Trabaho (Optional)</Text>
+        <View style={styles.chipGrid}>
+          {WORK_TYPES.map(type => (
+            <TouchableOpacity
+              key={type}
+              onPress={() => setWorkType(workType === type ? '' : type)}
+              style={[
+                styles.chip,
+                workType === type && styles.chipActive
+              ]}
+            >
+              <Text style={[
+                styles.chipText,
+                workType === type && styles.chipTextActive
+              ]}>
+                {type}
+              </Text>
+            </TouchableOpacity>
+          ))}
+        </View>
+
+        {/* Contact Preference */}
+        <Text style={styles.fieldLabel}>Paraan ng Contact (Optional)</Text>
+        <View style={styles.chipGrid}>
+          {CONTACT_PREFS.map(pref => (
+            <TouchableOpacity
+              key={pref}
+              onPress={() => setContactPref(contactPref === pref ? '' : pref)}
+              style={[
+                styles.chip,
+                contactPref === pref && styles.chipActive
+              ]}
+            >
+              <Text style={[
+                styles.chipText,
+                contactPref === pref && styles.chipTextActive
+              ]}>
+                {pref}
+              </Text>
+            </TouchableOpacity>
+          ))}
+        </View>
+
+        {/* Section: Other */}
+        <Text style={styles.sectionLabel}>Iba Pa</Text>
+
         <Input
           label="Hanggang kailan kailangan? (Optional)"
-          placeholder="Halimbawa: 2026-06-30"
+          placeholder="YYYY-MM-DD halimbawa: 2026-06-30"
           value={expiresAt}
           onChangeText={setExpiresAt}
         />
 
-        {/* Submit */}
         <Button
           label={submitting ? 'Nagpo-post...' : 'I-post ang Trabaho'}
           onPress={handleSubmit}
@@ -273,10 +353,7 @@ const styles = StyleSheet.create({
     fontWeight: typography.fontWeights.bold,
     color: colors.white,
   },
-  form: {
-    flex: 1,
-    padding: spacing.lg,
-  },
+  form: { flex: 1, padding: spacing.lg },
   reminderBox: {
     flexDirection: 'row',
     alignItems: 'flex-start',
@@ -292,6 +369,15 @@ const styles = StyleSheet.create({
     color: colors.primaryDark,
     lineHeight: 20,
   },
+  sectionLabel: {
+    fontSize: typography.fontSizes.xs,
+    fontWeight: typography.fontWeights.medium,
+    color: colors.gray400,
+    textTransform: 'uppercase',
+    letterSpacing: 0.7,
+    marginBottom: spacing.md,
+    marginTop: spacing.lg,
+  },
   fieldLabel: {
     fontSize: typography.fontSizes.sm,
     fontWeight: typography.fontWeights.medium,
@@ -303,13 +389,13 @@ const styles = StyleSheet.create({
     color: colors.danger,
     marginBottom: spacing.sm,
   },
-  categories: {
+  chipGrid: {
     flexDirection: 'row',
     flexWrap: 'wrap',
     gap: spacing.sm,
     marginBottom: spacing.lg,
   },
-  categoryBtn: {
+  chip: {
     paddingHorizontal: spacing.lg,
     paddingVertical: spacing.sm,
     borderRadius: 999,
@@ -317,16 +403,16 @@ const styles = StyleSheet.create({
     borderColor: colors.gray200,
     backgroundColor: colors.white,
   },
-  categoryBtnActive: {
+  chipActive: {
     backgroundColor: colors.primary,
     borderColor: colors.primary,
   },
-  categoryText: {
+  chipText: {
     fontSize: typography.fontSizes.sm,
     color: colors.gray600,
     fontWeight: typography.fontWeights.medium,
   },
-  categoryTextActive: { color: colors.white },
+  chipTextActive: { color: colors.white },
   barangaySelector: {
     flexDirection: 'row',
     alignItems: 'center',
