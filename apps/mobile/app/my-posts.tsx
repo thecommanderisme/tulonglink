@@ -70,6 +70,27 @@ export default function MyPostsScreen() {
     );
   };
   
+  const handleReopenJob = async (jobId: number) => {
+  Alert.alert(
+    'Buksan ulit ang Job?',
+    'Matatanggap ulit ang mga bagong aplikante.',
+    [
+      { text: 'Kanselahin', style: 'cancel' },
+      {
+        text: 'Buksan ulit',
+        onPress: async () => {
+          try {
+            await api.patch(`/jobs/${jobId}/reopen`);
+            await fetchMyPosts();
+          } catch (err: any) {
+            Alert.alert('Error', err.response?.data?.message || 'Hindi mabuksan. Subukan ulit.');
+          }
+        },
+      },
+    ]
+  );
+};
+
 const handleDeleteJob = async (jobId: number) => {
   Alert.alert(
     'Burahin ang Job?',
@@ -231,6 +252,19 @@ const handleDeleteJob = async (jobId: number) => {
                     >
                       <Ionicons name="lock-closed-outline" size={14} color={colors.warning} />
                       <Text style={styles.closeBtnText}>Isara</Text>
+                    </TouchableOpacity>
+                  )}
+
+                  {(job.status === 'CLOSED') && (
+                    <TouchableOpacity
+                      style={styles.reopenBtn}
+                      onPress={(e) => {
+                        e.stopPropagation();
+                        handleReopenJob(job.id);
+                      }}
+                    >
+                      <Ionicons name="refresh-outline" size={14} color={colors.success} />
+                      <Text style={styles.reopenBtnText}>Buksan ulit</Text>
                     </TouchableOpacity>
                   )}
 
@@ -402,4 +436,19 @@ const styles = StyleSheet.create({
     color: colors.danger,
     fontWeight: typography.fontWeights.medium,
   },
+  reopenBtn: {
+  flexDirection: 'row',
+  alignItems: 'center',
+  gap: 4,
+  paddingHorizontal: spacing.md,
+  paddingVertical: spacing.sm,
+  borderRadius: 8,
+  borderWidth: 1,
+  borderColor: colors.success,
+},
+reopenBtnText: {
+  fontSize: typography.fontSizes.xs,
+  color: colors.success,
+  fontWeight: typography.fontWeights.medium,
+},
 });

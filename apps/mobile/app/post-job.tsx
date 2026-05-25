@@ -1,10 +1,11 @@
 import { useState, useEffect } from 'react';
 import {
   View, Text, StyleSheet, ScrollView,
-  TouchableOpacity, Alert, Platform
+  TouchableOpacity, Alert
 } from 'react-native';
 import { router } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
+import DateTimePicker from '@react-native-community/datetimepicker';
 import { colors, typography, spacing } from '../theme';
 import { Input, Button } from '../components';
 import api from '../lib/api';
@@ -26,7 +27,8 @@ export default function PostJobScreen() {
   const [barangays, setBarangays] = useState<any[]>([]);
   const [showBarangayPicker, setShowBarangayPicker] = useState(false);
   const [barangaySearch, setBarangaySearch] = useState('');
-  const [expiresAt, setExpiresAt] = useState('');
+  const [expiresAt, setExpiresAt] = useState<Date | null>(null);
+  const [showDatePicker, setShowDatePicker] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
 
@@ -62,7 +64,9 @@ export default function PostJobScreen() {
         category,
         pay: pay.trim(),
         location: selectedBarangay?.displayName || '',
-        dateNeeded: expiresAt ? `${expiresAt}T23:59:59` : null,
+        dateNeeded: expiresAt
+          ? `${expiresAt.toISOString().split('T')[0]}T23:59:59`
+          : null,
         barangayId: selectedBarangay?.id || null,
         description: description.trim() || null,
         requirements: requirements.trim() || null,
@@ -135,10 +139,7 @@ export default function PostJobScreen() {
             <TouchableOpacity
               key={cat}
               onPress={() => setCategory(cat)}
-              style={[
-                styles.chip,
-                category === cat && styles.chipActive
-              ]}
+              style={[styles.chip, category === cat && styles.chipActive]}
             >
               <Text style={[
                 styles.chipText,
@@ -167,14 +168,14 @@ export default function PostJobScreen() {
         )}
         <TouchableOpacity
           style={[
-            styles.barangaySelector,
+            styles.selector,
             errors.barangay ? { borderColor: colors.danger } : {}
           ]}
           onPress={() => setShowBarangayPicker(!showBarangayPicker)}
         >
           <Ionicons name="location-outline" size={18} color={colors.gray400} />
           <Text style={[
-            styles.barangaySelectorText,
+            styles.selectorText,
             !selectedBarangay && { color: colors.gray400 }
           ]}>
             {selectedBarangay?.displayName || 'Pumili ng barangay...'}
@@ -187,9 +188,9 @@ export default function PostJobScreen() {
         </TouchableOpacity>
 
         {showBarangayPicker && (
-          <View style={styles.barangayModal}>
-            <View style={styles.barangayModalHeader}>
-              <Text style={styles.barangayModalTitle}>Piliin ang Barangay</Text>
+          <View style={styles.pickerModal}>
+            <View style={styles.pickerModalHeader}>
+              <Text style={styles.pickerModalTitle}>Piliin ang Barangay</Text>
               <TouchableOpacity onPress={() => {
                 setShowBarangayPicker(false);
                 setBarangaySearch('');
@@ -208,8 +209,8 @@ export default function PostJobScreen() {
                 <TouchableOpacity
                   key={b.id}
                   style={[
-                    styles.barangayItem,
-                    selectedBarangay?.id === b.id && styles.barangayItemSelected
+                    styles.pickerItem,
+                    selectedBarangay?.id === b.id && styles.pickerItemSelected
                   ]}
                   onPress={() => {
                     setSelectedBarangay(b);
@@ -219,15 +220,13 @@ export default function PostJobScreen() {
                 >
                   <Ionicons
                     name={selectedBarangay?.id === b.id
-                      ? 'radio-button-on'
-                      : 'radio-button-off'}
+                      ? 'radio-button-on' : 'radio-button-off'}
                     size={18}
                     color={selectedBarangay?.id === b.id
-                      ? colors.primary
-                      : colors.gray400}
+                      ? colors.primary : colors.gray400}
                   />
                   <Text style={[
-                    styles.barangayItemText,
+                    styles.pickerItemText,
                     selectedBarangay?.id === b.id && {
                       color: colors.primary,
                       fontWeight: typography.fontWeights.medium
@@ -246,7 +245,7 @@ export default function PostJobScreen() {
 
         <Input
           label="Paglalarawan (Optional)"
-          placeholder="Halimbawa: Kailangan ng labandera 3x sa isang linggo para sa isang pamilya..."
+          placeholder="Halimbawa: Kailangan ng labandera 3x sa isang linggo..."
           value={description}
           onChangeText={setDescription}
           multiline
@@ -255,7 +254,7 @@ export default function PostJobScreen() {
 
         <Input
           label="Mga Kinakailangan (Optional)"
-          placeholder="Halimbawa: May sariling plantsa, 18+ taong gulang, may barangay clearance..."
+          placeholder="Halimbawa: May sariling plantsa, 18+ taong gulang..."
           value={requirements}
           onChangeText={setRequirements}
           multiline
@@ -269,17 +268,13 @@ export default function PostJobScreen() {
           onChangeText={setWorkSchedule}
         />
 
-        {/* Work Type */}
         <Text style={styles.fieldLabel}>Uri ng Trabaho (Optional)</Text>
         <View style={styles.chipGrid}>
           {WORK_TYPES.map(type => (
             <TouchableOpacity
               key={type}
               onPress={() => setWorkType(workType === type ? '' : type)}
-              style={[
-                styles.chip,
-                workType === type && styles.chipActive
-              ]}
+              style={[styles.chip, workType === type && styles.chipActive]}
             >
               <Text style={[
                 styles.chipText,
@@ -291,17 +286,13 @@ export default function PostJobScreen() {
           ))}
         </View>
 
-        {/* Contact Preference */}
         <Text style={styles.fieldLabel}>Paraan ng Contact (Optional)</Text>
         <View style={styles.chipGrid}>
           {CONTACT_PREFS.map(pref => (
             <TouchableOpacity
               key={pref}
               onPress={() => setContactPref(contactPref === pref ? '' : pref)}
-              style={[
-                styles.chip,
-                contactPref === pref && styles.chipActive
-              ]}
+              style={[styles.chip, contactPref === pref && styles.chipActive]}
             >
               <Text style={[
                 styles.chipText,
@@ -316,12 +307,42 @@ export default function PostJobScreen() {
         {/* Section: Other */}
         <Text style={styles.sectionLabel}>Iba Pa</Text>
 
-        <Input
-          label="Hanggang kailan kailangan? (Optional)"
-          placeholder="YYYY-MM-DD halimbawa: 2026-06-30"
-          value={expiresAt}
-          onChangeText={setExpiresAt}
-        />
+        <Text style={styles.fieldLabel}>Hanggang kailan kailangan? (Optional)</Text>
+        <TouchableOpacity
+          style={styles.selector}
+          onPress={() => setShowDatePicker(true)}
+        >
+          <Ionicons name="calendar-outline" size={18} color={colors.gray400} />
+          <Text style={[
+            styles.selectorText,
+            !expiresAt && { color: colors.gray400 }
+          ]}>
+            {expiresAt
+              ? expiresAt.toLocaleDateString('fil-PH', {
+                  month: 'long', day: 'numeric', year: 'numeric'
+                })
+              : 'Pumili ng petsa...'}
+          </Text>
+          {expiresAt && (
+            <TouchableOpacity onPress={() => setExpiresAt(null)}>
+              <Ionicons name="close-circle" size={18} color={colors.gray400} />
+            </TouchableOpacity>
+          )}
+        </TouchableOpacity>
+
+        {showDatePicker && (
+          <DateTimePicker
+            value={expiresAt || new Date(new Date().setDate(new Date().getDate() + 1))}
+            mode="date"
+            minimumDate={new Date(new Date().setHours(0, 0, 0, 0))}
+            onChange={(event, date) => {
+              setShowDatePicker(false);
+              if (event.type === 'set' && date) {
+                setExpiresAt(date);
+              }
+            }}
+          />
+        )}
 
         <Button
           label={submitting ? 'Nagpo-post...' : 'I-post ang Trabaho'}
@@ -413,7 +434,7 @@ const styles = StyleSheet.create({
     fontWeight: typography.fontWeights.medium,
   },
   chipTextActive: { color: colors.white },
-  barangaySelector: {
+  selector: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: spacing.sm,
@@ -425,12 +446,12 @@ const styles = StyleSheet.create({
     backgroundColor: colors.white,
     marginBottom: spacing.sm,
   },
-  barangaySelectorText: {
+  selectorText: {
     flex: 1,
     fontSize: typography.fontSizes.md,
     color: colors.gray900,
   },
-  barangayModal: {
+  pickerModal: {
     backgroundColor: colors.white,
     borderRadius: 12,
     padding: spacing.lg,
@@ -438,26 +459,26 @@ const styles = StyleSheet.create({
     borderWidth: 0.5,
     borderColor: colors.gray200,
   },
-  barangayModalHeader: {
+  pickerModalHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
     marginBottom: spacing.md,
   },
-  barangayModalTitle: {
+  pickerModalTitle: {
     fontSize: typography.fontSizes.md,
     fontWeight: typography.fontWeights.bold,
     color: colors.gray900,
   },
-  barangayItem: {
+  pickerItem: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: spacing.sm,
     padding: spacing.sm,
     borderRadius: 8,
   },
-  barangayItemSelected: { backgroundColor: colors.primaryLight },
-  barangayItemText: {
+  pickerItemSelected: { backgroundColor: colors.primaryLight },
+  pickerItemText: {
     fontSize: typography.fontSizes.sm,
     color: colors.gray900,
   },
