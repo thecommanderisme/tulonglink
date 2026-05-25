@@ -16,6 +16,8 @@ interface Applicant {
   appliedAt: string;
   applicantId: number;
   applicantPhone: string;
+  applicantName: string;
+  applicantSkills: string;
 }
 
 const STATUS_CONFIG: Record<string, { label: string; variant: any }> = {
@@ -166,11 +168,15 @@ export default function JobApplicantsScreen() {
                     </Text>
                   </View>
                   <View style={styles.applicantInfo}>
-                    <Text style={styles.phone}>{app.applicantPhone}</Text>
-                    <Text style={styles.date}>
-                      Nag-apply: {formatDate(app.appliedAt)}
-                    </Text>
-                  </View>
+  <Text style={styles.name}>{app.applicantName || app.applicantPhone}</Text>
+  <Text style={styles.phone}>{app.applicantPhone}</Text>
+  {app.applicantSkills && (
+    <Text style={styles.skills}>💼 {app.applicantSkills}</Text>
+  )}
+  <Text style={styles.date}>
+    Nag-apply: {formatDate(app.appliedAt)}
+  </Text>
+</View>
                   <Badge
                     label={statusConfig.label}
                     variant={statusConfig.variant}
@@ -357,6 +363,11 @@ const styles = StyleSheet.create({
     color: colors.primary,
     fontWeight: typography.fontWeights.medium,
   },
+  skills: {
+  fontSize: typography.fontSizes.xs,
+  color: colors.primary,
+  marginTop: 2,
+},
   shortlistBtn: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -407,4 +418,9 @@ const styles = StyleSheet.create({
     color: colors.success,
     textAlign: 'center',
   },
+  name: {
+  fontSize: typography.fontSizes.md,
+  fontWeight: typography.fontWeights.medium,
+  color: colors.gray900,
+},
 });

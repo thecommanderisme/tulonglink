@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import {
   View, Text, StyleSheet, ScrollView,
-  TouchableOpacity, ActivityIndicator, Alert
+  TouchableOpacity, ActivityIndicator, Alert, Linking
 } from 'react-native';
 import { router, useLocalSearchParams } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
@@ -18,9 +18,16 @@ interface Job {
   location: string;
   status: string;
   postedBy: string;
+  postedByPhone: string;
   postedById: number;
+  barangay: string;
+  city: string;
   createdAt: string;
   applicationCount: number;
+  description: string;
+  requirements: string;
+  workSchedule: string;
+  dateNeeded: string;
 }
 
 export default function JobDetailScreen() {
@@ -33,17 +40,29 @@ export default function JobDetailScreen() {
   const { data: job, loading } = useCachedFetch<Job>(`/jobs/${id}`);
 
   useEffect(() => {
-    if (job) checkOwnership();
+    if (job) checkOwnershipAndApplication();
   }, [job]);
 
-  const checkOwnership = async () => {
+  const checkOwnershipAndApplication = async () => {
     try {
-      const userRes = await api.get('/users/me');
+      const [userRes, applicationsRes] = await Promise.all([
+        api.get('/users/me'),
+        api.get('/jobs/my-applications'),
+      ]);
+
+      // Check ownership
       if (job?.postedById === userRes.data?.id) {
         setIsOwner(true);
       }
+
+      // Check if already applied
+      const alreadyApplied = applicationsRes.data?.some(
+        (app: any) => app.job?.id === job?.id
+      );
+      if (alreadyApplied) setApplied(true);
+
     } catch (err) {
-      console.log('Ownership check error:', err);
+      console.log('Check error:', err);
     } finally {
       setCheckingOwner(false);
     }
@@ -65,6 +84,21 @@ export default function JobDetailScreen() {
     } finally {
       setApplying(false);
     }
+  };
+
+  const handleCallEmployer = () => {
+    if (job?.postedByPhone) {
+      Linking.openURL(`tel:${job.postedByPhone}`);
+    }
+  };
+
+  const formatDate = (dateStr: string) => {
+    if (!dateStr) return '';
+    return new Date(dateStr).toLocaleDateString('fil-PH', {
+      month: 'long',
+      day: 'numeric',
+      year: 'numeric',
+    });
   };
 
   if (loading || checkingOwner) {
@@ -99,12 +133,15 @@ export default function JobDetailScreen() {
           <Text style={styles.headerTitle}>Detalye ng Trabaho</Text>
         </View>
 
-        {/* Job Info */}
+        {/* Job Info Card */}
         <View style={styles.jobCard}>
           <View style={styles.jobHeader}>
             <Text style={styles.jobTitle}>{job.title}</Text>
             <Badge
-              label={job.status === 'OPEN' ? 'Bukas' : job.status === 'FILLED' ? 'Napuno' : 'Sarado'}
+              label={
+                job.status === 'OPEN' ? 'Bukas' :
+                job.status === 'FILLED' ? 'Napuno' : 'Sarado'
+              }
               variant={job.status === 'OPEN' ? 'success' : 'neutral'}
             />
           </View>
@@ -122,28 +159,79 @@ export default function JobDetailScreen() {
                 <Text style={styles.metaText}>{job.location}</Text>
               </View>
             )}
+            {job.barangay && (
+              <View style={styles.metaRow}>
+                <Ionicons name="map-outline" size={18} color={colors.primary} />
+                <Text style={styles.metaText}>{job.barangay}{job.city ? `, ${job.city}` : ''}</Text>
+              </View>
+            )}
             {job.category && (
               <View style={styles.metaRow}>
                 <Ionicons name="pricetag-outline" size={18} color={colors.primary} />
                 <Text style={styles.metaText}>{job.category}</Text>
               </View>
             )}
-            {job.status === 'FILLED' && (
-                <View style={styles.metaRow}>
-                    <Ionicons name="checkmark-circle-outline" size={18} color={colors.success} />
-                    <Text style={[styles.metaText, { color: colors.success }]}>
-                    Napili na ang manggagawa para sa trabahong ito
-                    </Text>
-                </View>
-                )}
+            {job.workSchedule && (
+              <View style={styles.metaRow}>
+                <Ionicons name="time-outline" size={18} color={colors.primary} />
+                <Text style={styles.metaText}>{job.workSchedule}</Text>
+              </View>
+            )}
+            {job.dateNeeded && (
+              <View style={styles.metaRow}>
+                <Ionicons name="calendar-outline" size={18} color={colors.primary} />
+                <Text style={styles.metaText}>Kailangan hanggang {formatDate(job.dateNeeded)}</Text>
+              </View>
+            )}
             {job.postedBy && (
               <View style={styles.metaRow}>
                 <Ionicons name="person-outline" size={18} color={colors.primary} />
                 <Text style={styles.metaText}>In-post ni {job.postedBy}</Text>
               </View>
             )}
+            {job.status === 'FILLED' && (
+              <View style={styles.metaRow}>
+                <Ionicons name="checkmark-circle-outline" size={18} color={colors.success} />
+                <Text style={[styles.metaText, { color: colors.success }]}>
+                  Napili na ang manggagawa
+                </Text>
+              </View>
+            )}
           </View>
         </View>
+
+        {/* Description */}
+        {job.description && (
+          <View style={styles.sectionCard}>
+            <Text style={styles.sectionTitle}>Tungkol sa Trabaho</Text>
+            <Text style={styles.sectionText}>{job.description}</Text>
+          </View>
+        )}
+
+        {/* Requirements */}
+        {job.requirements && (
+          <View style={styles.sectionCard}>
+            <Text style={styles.sectionTitle}>Mga Kinakailangan</Text>
+            <Text style={styles.sectionText}>{job.requirements}</Text>
+          </View>
+        )}
+
+        {/* Hired — show employer contact */}
+        {applied && !isOwner && (
+          <View style={styles.hiredCard}>
+            <Text style={styles.hiredTitle}>📞 Contact ng Employer</Text>
+            <Text style={styles.hiredSub}>
+              Na-shortlist o napili ka! Maaari kang makipag-ugnayan sa employer.
+            </Text>
+            <TouchableOpacity
+              style={styles.callBtn}
+              onPress={handleCallEmployer}
+            >
+              <Ionicons name="call-outline" size={18} color={colors.white} />
+              <Text style={styles.callText}>{job.postedByPhone}</Text>
+            </TouchableOpacity>
+          </View>
+        )}
 
         {/* Owner banner */}
         {isOwner && (
@@ -187,7 +275,11 @@ export default function JobDetailScreen() {
       {job.status === 'OPEN' && !isOwner && (
         <View style={styles.applyBar}>
           <Button
-            label={applied ? 'Nag-apply na ✓' : applying ? 'Nag-aapply...' : 'Mag-apply Ngayon'}
+            label={
+              applied ? 'Nag-apply na ✓' :
+              applying ? 'Nag-aapply...' :
+              'Mag-apply Ngayon'
+            }
             onPress={handleApply}
             disabled={applied || applying}
             loading={applying}
@@ -269,6 +361,62 @@ const styles = StyleSheet.create({
   metaText: {
     fontSize: typography.fontSizes.md,
     color: colors.gray600,
+    flex: 1,
+  },
+  sectionCard: {
+    backgroundColor: colors.white,
+    marginHorizontal: spacing.lg,
+    marginBottom: spacing.md,
+    borderRadius: 12,
+    padding: spacing.lg,
+    borderWidth: 0.5,
+    borderColor: colors.gray200,
+  },
+  sectionTitle: {
+    fontSize: typography.fontSizes.md,
+    fontWeight: typography.fontWeights.bold,
+    color: colors.gray900,
+    marginBottom: spacing.sm,
+  },
+  sectionText: {
+    fontSize: typography.fontSizes.sm,
+    color: colors.gray600,
+    lineHeight: 22,
+  },
+  hiredCard: {
+    backgroundColor: colors.successLight,
+    marginHorizontal: spacing.lg,
+    marginBottom: spacing.md,
+    borderRadius: 12,
+    padding: spacing.lg,
+    borderWidth: 1,
+    borderColor: colors.success,
+    gap: spacing.sm,
+  },
+  hiredTitle: {
+    fontSize: typography.fontSizes.md,
+    fontWeight: typography.fontWeights.bold,
+    color: colors.success,
+  },
+  hiredSub: {
+    fontSize: typography.fontSizes.sm,
+    color: colors.success,
+    lineHeight: 20,
+  },
+  callBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.sm,
+    backgroundColor: colors.success,
+    padding: spacing.md,
+    borderRadius: 10,
+    justifyContent: 'center',
+    marginTop: spacing.xs,
+  },
+  callText: {
+    fontSize: typography.fontSizes.md,
+    color: colors.white,
+    fontWeight: typography.fontWeights.bold,
   },
   ownerBanner: {
     flexDirection: 'row',
