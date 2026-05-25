@@ -33,6 +33,7 @@ const CATEGORIES = ['Lahat', 'Malapit', 'Bahay', 'Pagkain', 'Konstruksiyon', 'Ba
 export default function JobsScreen() {
   const [search, setSearch] = useState('');
   const [selectedCategory, setSelectedCategory] = useState('Lahat');
+  const [showOpenOnly, setShowOpenOnly] = useState(true);
   const [applying, setApplying] = useState<number | null>(null);
   const [appliedJobs, setAppliedJobs] = useState<number[]>([]);
   const [reporting, setReporting] = useState<number | null>(null);
@@ -60,13 +61,14 @@ export default function JobsScreen() {
     }
   };
 
-  const params: any = {};
+  const params: any = { _v: showOpenOnly ? 'open' : 'all' };
   if (selectedCategory === 'Malapit' && userCity) {
     params.city = userCity;
   } else if (selectedCategory !== 'Lahat' && selectedCategory !== 'Malapit') {
     params.category = selectedCategory;
   }
   if (search) params.search = search;
+  if (!showOpenOnly) params.showAll = true;
 
   const { data: jobs, loading, refresh, isFromCache } =
     useCachedFetch<Job[]>('/jobs', params);
@@ -127,11 +129,18 @@ export default function JobsScreen() {
             <Text style={styles.subtitle}>Mag-apply nang walang resume</Text>
           </View>
           <TouchableOpacity
-            style={styles.postBtn}
-            onPress={() => router.push('/post-job')}
+            style={[
+              styles.filterBtn,
+              !showOpenOnly && styles.filterBtnInactive
+            ]}
+            onPress={() => setShowOpenOnly(!showOpenOnly)}
           >
-            <Ionicons name="add-circle" size={20} color={colors.white} />
-            <Text style={styles.postBtnText}>Mag-post</Text>
+            <Text style={[
+              styles.filterBtnText,
+              !showOpenOnly && styles.filterBtnTextInactive
+            ]}>
+              {showOpenOnly ? '✅ Bukas lang' : '📋 Lahat'}
+            </Text>
           </TouchableOpacity>
         </View>
       </View>
@@ -233,10 +242,7 @@ export default function JobsScreen() {
                 <View style={styles.jobHeader}>
                   <Text style={styles.jobTitle}>{job.title}</Text>
                   <Badge
-                    label={
-                      job.status === 'OPEN' ? 'Bukas' :
-                      job.status === 'FILLED' ? 'Napuno' : 'Sarado'
-                    }
+                    label={job.status === 'OPEN' ? 'Bukas' : 'Sarado'}
                     variant={job.status === 'OPEN' ? 'success' : 'neutral'}
                   />
                 </View>
@@ -294,7 +300,7 @@ export default function JobsScreen() {
               </Card>
             </TouchableOpacity>
           ))}
-          <View style={{ height: spacing.xxl }} />
+          <View style={{ height: 100 }} />
         </ScrollView>
       )}
 
@@ -370,6 +376,17 @@ export default function JobsScreen() {
           </View>
         </View>
       </Modal>
+
+      {/* Floating Post Button */}
+<TouchableOpacity
+  style={styles.fab}
+  onPress={() => router.push('/post-job')}
+  activeOpacity={0.8}
+>
+  <Ionicons name="add" size={20} color={colors.white} />
+  <Text style={styles.fabText}>Mag-post ng Trabaho</Text>
+</TouchableOpacity>
+
     </View>
   );
 }
@@ -397,19 +414,25 @@ const styles = StyleSheet.create({
     color: colors.primaryLight,
     marginTop: 2,
   },
-  postBtn: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
-    backgroundColor: colors.primaryDark,
+  filterBtn: {
     paddingHorizontal: spacing.md,
-    paddingVertical: spacing.sm,
+    paddingVertical: spacing.xs,
     borderRadius: 999,
+    backgroundColor: colors.successLight,
+    borderWidth: 1,
+    borderColor: colors.success,
   },
-  postBtnText: {
-    fontSize: typography.fontSizes.sm,
-    color: colors.white,
+  filterBtnInactive: {
+    backgroundColor: colors.white,
+    borderColor: colors.gray200,
+  },
+  filterBtnText: {
+    fontSize: typography.fontSizes.xs,
+    color: colors.success,
     fontWeight: typography.fontWeights.medium,
+  },
+  filterBtnTextInactive: {
+    color: colors.gray600,
   },
   searchWrap: {
     paddingHorizontal: spacing.lg,
@@ -526,7 +549,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   applyBtnDone: { backgroundColor: colors.success },
-  applyBtnClosed: { backgroundColor: colors.gray400 },
+  applyBtnClosed: { backgroundColor: colors.gray200 },
   applyText: {
     fontSize: typography.fontSizes.sm,
     color: colors.white,
@@ -639,4 +662,26 @@ const styles = StyleSheet.create({
     color: colors.white,
     fontWeight: typography.fontWeights.bold,
   },
+fab: {
+  position: 'absolute',
+  bottom: spacing.xl,
+  right: spacing.xl,
+  flexDirection: 'row',
+  alignItems: 'center',
+  gap: 6,
+  paddingHorizontal: spacing.lg,
+  paddingVertical: spacing.md,
+  borderRadius: 999,
+  backgroundColor: colors.primary,
+  shadowColor: '#000',
+  shadowOffset: { width: 0, height: 2 },
+  shadowOpacity: 0.25,
+  shadowRadius: 4,
+  elevation: 5,
+},
+fabText: {
+  fontSize: typography.fontSizes.sm,
+  color: colors.white,
+  fontWeight: typography.fontWeights.bold,
+},
 });

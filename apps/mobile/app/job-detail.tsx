@@ -150,12 +150,9 @@ export default function JobDetailScreen() {
           <View style={styles.jobHeader}>
             <Text style={styles.jobTitle}>{job.title}</Text>
             <Badge
-              label={
-                job.status === 'OPEN' ? 'Bukas' :
-                job.status === 'FILLED' ? 'Napuno' : 'Sarado'
-              }
-              variant={job.status === 'OPEN' ? 'success' : 'neutral'}
-            />
+                label={job.status === 'OPEN' ? 'Bukas' : 'Sarado'}
+                variant={job.status === 'OPEN' ? 'success' : 'neutral'}
+              />
           </View>
 
           <View style={styles.metaList}>
@@ -203,14 +200,6 @@ export default function JobDetailScreen() {
               <View style={styles.metaRow}>
                 <Ionicons name="person-outline" size={18} color={colors.primary} />
                 <Text style={styles.metaText}>In-post ni {job.postedBy}</Text>
-              </View>
-            )}
-            {job.status === 'FILLED' && (
-              <View style={styles.metaRow}>
-                <Ionicons name="checkmark-circle-outline" size={18} color={colors.success} />
-                <Text style={[styles.metaText, { color: colors.success }]}>
-                  Napili na ang manggagawa
-                </Text>
               </View>
             )}
           </View>

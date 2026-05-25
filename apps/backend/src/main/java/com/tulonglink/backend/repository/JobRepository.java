@@ -13,32 +13,45 @@ import java.util.List;
 @Repository
 public interface JobRepository extends JpaRepository<Job, Long> {
 
-    @Query("SELECT j FROM Job j WHERE j.deletedAt IS NULL AND (j.dateNeeded IS NULL OR j.dateNeeded > :now) ORDER BY j.createdAt DESC")
+    // All open jobs (default)
+    @Query("SELECT j FROM Job j WHERE j.deletedAt IS NULL AND j.status = 'OPEN' AND (j.dateNeeded IS NULL OR j.dateNeeded > :now) ORDER BY j.createdAt DESC")
     Page<Job> findByDeletedAtIsNullOrderByCreatedAtDesc(Pageable pageable, LocalDateTime now);
 
-    @Query("SELECT j FROM Job j WHERE j.deletedAt IS NULL AND j.category = :category AND (j.dateNeeded IS NULL OR j.dateNeeded > :now) ORDER BY j.createdAt DESC")
-    Page<Job> findByCategoryAndDeletedAtIsNullOrderByCreatedAtDesc(String category, Pageable pageable, LocalDateTime now);
-
-    @Query("SELECT j FROM Job j WHERE j.deletedAt IS NULL AND LOWER(j.title) LIKE LOWER(CONCAT('%', :keyword, '%'))")
-    Page<Job> searchByTitle(String keyword, Pageable pageable);
-
-    List<Job> findByBarangayIdAndDeletedAtIsNullOrderByCreatedAtDesc(Long barangayId);
-
-    @Query("SELECT j FROM Job j WHERE j.deletedAt IS NULL AND (j.dateNeeded IS NULL OR j.dateNeeded > :now) AND j.barangay.city = :city ORDER BY j.createdAt DESC")
-    Page<Job> findByCity(String city, Pageable pageable, LocalDateTime now);
-
-    List<Job> findByPostedByUserIdAndDeletedAtIsNullOrderByCreatedAtDesc(Long userId);
-
-    // Exclude current user's posts
-    @Query("SELECT j FROM Job j WHERE j.deletedAt IS NULL AND (j.dateNeeded IS NULL OR j.dateNeeded > :now) AND j.postedByUser.id != :userId ORDER BY j.createdAt DESC")
+    // All open jobs excluding own posts
+    @Query("SELECT j FROM Job j WHERE j.deletedAt IS NULL AND j.status = 'OPEN' AND (j.dateNeeded IS NULL OR j.dateNeeded > :now) AND j.postedByUser.id != :userId ORDER BY j.createdAt DESC")
     Page<Job> findByDeletedAtIsNullAndNotPostedBy(Pageable pageable, LocalDateTime now, Long userId);
 
-    @Query("SELECT j FROM Job j WHERE j.deletedAt IS NULL AND j.category = :category AND (j.dateNeeded IS NULL OR j.dateNeeded > :now) AND j.postedByUser.id != :userId ORDER BY j.createdAt DESC")
+    // All jobs including closed/filled excluding own posts
+    @Query("SELECT j FROM Job j WHERE j.deletedAt IS NULL AND (j.dateNeeded IS NULL OR j.dateNeeded > :now) AND j.postedByUser.id != :userId ORDER BY j.createdAt DESC")
+    Page<Job> findAllJobsNotPostedBy(Pageable pageable, LocalDateTime now, Long userId);
+
+    // Open jobs by category
+    @Query("SELECT j FROM Job j WHERE j.deletedAt IS NULL AND j.status = 'OPEN' AND j.category = :category AND (j.dateNeeded IS NULL OR j.dateNeeded > :now) ORDER BY j.createdAt DESC")
+    Page<Job> findByCategoryAndDeletedAtIsNullOrderByCreatedAtDesc(String category, Pageable pageable, LocalDateTime now);
+
+    // Open jobs by category excluding own posts
+    @Query("SELECT j FROM Job j WHERE j.deletedAt IS NULL AND j.status = 'OPEN' AND j.category = :category AND (j.dateNeeded IS NULL OR j.dateNeeded > :now) AND j.postedByUser.id != :userId ORDER BY j.createdAt DESC")
     Page<Job> findByCategoryAndDeletedAtIsNullAndNotPostedBy(String category, Pageable pageable, LocalDateTime now, Long userId);
 
-    @Query("SELECT j FROM Job j WHERE j.deletedAt IS NULL AND LOWER(j.title) LIKE LOWER(CONCAT('%', :keyword, '%')) AND j.postedByUser.id != :userId")
+    // Search open jobs
+    @Query("SELECT j FROM Job j WHERE j.deletedAt IS NULL AND j.status = 'OPEN' AND LOWER(j.title) LIKE LOWER(CONCAT('%', :keyword, '%'))")
+    Page<Job> searchByTitle(String keyword, Pageable pageable);
+
+    // Search open jobs excluding own posts
+    @Query("SELECT j FROM Job j WHERE j.deletedAt IS NULL AND j.status = 'OPEN' AND LOWER(j.title) LIKE LOWER(CONCAT('%', :keyword, '%')) AND j.postedByUser.id != :userId")
     Page<Job> searchByTitleAndNotPostedBy(String keyword, Pageable pageable, Long userId);
 
-    @Query("SELECT j FROM Job j WHERE j.deletedAt IS NULL AND (j.dateNeeded IS NULL OR j.dateNeeded > :now) AND j.barangay.city = :city AND j.postedByUser.id != :userId ORDER BY j.createdAt DESC")
+    // Open jobs by city
+    @Query("SELECT j FROM Job j WHERE j.deletedAt IS NULL AND j.status = 'OPEN' AND (j.dateNeeded IS NULL OR j.dateNeeded > :now) AND j.barangay.city = :city ORDER BY j.createdAt DESC")
+    Page<Job> findByCity(String city, Pageable pageable, LocalDateTime now);
+
+    // Open jobs by city excluding own posts
+    @Query("SELECT j FROM Job j WHERE j.deletedAt IS NULL AND j.status = 'OPEN' AND (j.dateNeeded IS NULL OR j.dateNeeded > :now) AND j.barangay.city = :city AND j.postedByUser.id != :userId ORDER BY j.createdAt DESC")
     Page<Job> findByCityAndNotPostedBy(String city, Pageable pageable, LocalDateTime now, Long userId);
+
+    // My posted jobs
+    List<Job> findByPostedByUserIdAndDeletedAtIsNullOrderByCreatedAtDesc(Long userId);
+
+    // Jobs by barangay
+    List<Job> findByBarangayIdAndDeletedAtIsNullOrderByCreatedAtDesc(Long barangayId);
 }

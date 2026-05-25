@@ -28,6 +28,7 @@ public class JobController {
             @RequestParam(required = false) String category,
             @RequestParam(required = false) String search,
             @RequestParam(required = false) String city,
+            @RequestParam(defaultValue = "false") boolean showAll,
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "20") int size,
             Authentication auth) {
@@ -43,7 +44,7 @@ public class JobController {
         if (category != null && !category.isEmpty()) {
             return ResponseEntity.ok(jobService.getJobsByCategory(category, page, size, userId));
         }
-        return ResponseEntity.ok(jobService.getAllJobs(page, size, userId));
+        return ResponseEntity.ok(jobService.getAllJobs(page, size, userId, showAll));
     }
 
     @GetMapping("/my-applications")

@@ -38,8 +38,13 @@ public class JobService {
         this.profileRepository = profileRepository;
     }
 
-    public Page<JobResponse> getAllJobs(int page, int size, Long userId) {
+    public Page<JobResponse> getAllJobs(int page, int size, Long userId, boolean showAll) {
         Pageable pageable = PageRequest.of(page, size);
+        if (showAll) {
+            // Show all including closed/filled
+            return jobRepository.findAllJobsNotPostedBy(pageable, LocalDateTime.now(), userId)
+                    .map(this::toResponse);
+        }
         if (userId != null) {
             return jobRepository.findByDeletedAtIsNullAndNotPostedBy(pageable, LocalDateTime.now(), userId)
                     .map(this::toResponse);
