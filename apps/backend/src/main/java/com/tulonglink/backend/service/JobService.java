@@ -276,26 +276,29 @@ public class JobService {
         }
 
         return JobResponse.builder()
-                .id(job.getId())
-                .title(job.getTitle())
-                .category(job.getCategory())
-                .pay(job.getPay())
-                .location(job.getLocation())
-                .status(job.getStatus())
-                .postedBy(postedByName)
-                .postedByPhone(postedByPhone)
-                .postedById(job.getPostedByUser() != null ?
-                        job.getPostedByUser().getId() : null)
-                .barangay(job.getBarangay() != null ?
-                        job.getBarangay().getName() : null)
-                .city(job.getBarangay() != null ?
-                        job.getBarangay().getCity() : null)
-                .createdAt(job.getCreatedAt())
-                .applicationCount(appCount)
-                .dateNeeded(job.getDateNeeded())
-                .workType(job.getWorkType())
-                .contactPref(job.getContactPref())
-                .build();
+            .id(job.getId())
+            .title(job.getTitle())
+            .category(job.getCategory())
+            .pay(job.getPay())
+            .location(job.getLocation())
+            .status(job.getStatus())
+            .postedBy(postedByName)
+            .postedByPhone(postedByPhone)
+            .postedById(job.getPostedByUser() != null ?
+                    job.getPostedByUser().getId() : null)
+            .barangay(job.getBarangay() != null ?
+                    job.getBarangay().getName() : null)
+            .city(job.getBarangay() != null ?
+                    job.getBarangay().getCity() : null)
+            .createdAt(job.getCreatedAt())
+            .applicationCount(appCount)
+            .dateNeeded(job.getDateNeeded())
+            .description(job.getDescription())
+            .requirements(job.getRequirements())
+            .workSchedule(job.getWorkSchedule())
+            .workType(job.getWorkType())
+            .contactPref(job.getContactPref())
+            .build();
     }
 
     public List<ApplicationResponse> getJobApplications(Long jobId, Long userId) {

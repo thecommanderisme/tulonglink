@@ -55,37 +55,44 @@ export default function PostJobScreen() {
     return Object.keys(newErrors).length === 0;
   };
 
-  const handleSubmit = async () => {
-    if (!validate()) return;
-    setSubmitting(true);
-    try {
-      await api.post('/jobs', {
-        title: title.trim(),
-        category,
-        pay: pay.trim(),
-        location: selectedBarangay?.displayName || '',
-        dateNeeded: expiresAt
-          ? `${expiresAt.toISOString().split('T')[0]}T23:59:59`
-          : null,
-        barangayId: selectedBarangay?.id || null,
-        description: description.trim() || null,
-        requirements: requirements.trim() || null,
-        workSchedule: workSchedule.trim() || null,
-      });
-      Alert.alert(
-        'Na-post na! ✅',
-        'Ang iyong job post ay nai-publish na.',
-        [{ text: 'OK', onPress: () => router.back() }]
-      );
-    } catch (err: any) {
-      Alert.alert(
-        'Error',
-        err.response?.data?.message || 'Hindi ma-post. Subukan ulit.'
-      );
-    } finally {
-      setSubmitting(false);
-    }
-  };
+const handleSubmit = async () => {
+  if (!validate()) return;
+  setSubmitting(true);
+  try {
+    const payload = {
+      title: title.trim(),
+      category,
+      pay: pay.trim(),
+      location: selectedBarangay?.displayName || '',
+      dateNeeded: expiresAt
+        ? `${expiresAt.toISOString().split('T')[0]}T23:59:59`
+        : null,
+      barangayId: selectedBarangay?.id || null,
+      description: description.trim() || null,
+      requirements: requirements.trim() || null,
+      workSchedule: workSchedule.trim() || null,
+      workType: workType || null,
+      contactPref: contactPref || null,
+    };
+
+    console.log('Posting job:', JSON.stringify(payload));
+
+    await api.post('/jobs', payload);
+
+    Alert.alert(
+      'Na-post na! ✅',
+      'Ang iyong job post ay nai-publish na.',
+      [{ text: 'OK', onPress: () => router.back() }]
+    );
+  } catch (err: any) {
+    Alert.alert(
+      'Error',
+      err.response?.data?.message || 'Hindi ma-post. Subukan ulit.'
+    );
+  } finally {
+    setSubmitting(false);
+  }
+};
 
   const filteredBarangays = barangays.filter(b =>
     b.displayName.toLowerCase().includes(barangaySearch.toLowerCase())
