@@ -1,13 +1,12 @@
-import { useState, useEffect } from 'react';
+import { useState, useCallback } from 'react';
 import {
   View, Text, StyleSheet, ScrollView,
   TouchableOpacity, ActivityIndicator, Alert, Linking
 } from 'react-native';
-import { router, useLocalSearchParams } from 'expo-router';
+import { router, useLocalSearchParams, useFocusEffect } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { colors, typography, spacing } from '../theme';
 import { Badge, Button } from '../components';
-import { useCachedFetch } from '../lib/useCachedFetch';
 import api from '../lib/api';
 
 interface Job {
@@ -32,39 +31,51 @@ interface Job {
 
 export default function JobDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
+  const [job, setJob] = useState<Job | null>(null);
+  const [loading, setLoading] = useState(true);
   const [applying, setApplying] = useState(false);
   const [applied, setApplied] = useState(false);
+  const [applicationStatus, setApplicationStatus] = useState<string | null>(null);
   const [isOwner, setIsOwner] = useState(false);
-  const [checkingOwner, setCheckingOwner] = useState(true);
 
-  const { data: job, loading } = useCachedFetch<Job>(`/jobs/${id}`);
+  useFocusEffect(
+    useCallback(() => {
+      fetchJobAndCheck();
+    }, [])
+  );
 
-  useEffect(() => {
-    if (job) checkOwnershipAndApplication();
-  }, [job]);
-
-  const checkOwnershipAndApplication = async () => {
+  const fetchJobAndCheck = async () => {
+    setLoading(true);
     try {
-      const [userRes, applicationsRes] = await Promise.all([
+      const [jobRes, userRes, applicationsRes] = await Promise.all([
+        api.get(`/jobs/${id}`),
         api.get('/users/me'),
         api.get('/jobs/my-applications'),
       ]);
 
-      // Check ownership
-      if (job?.postedById === userRes.data?.id) {
+      setJob(jobRes.data);
+
+      if (jobRes.data?.postedById === userRes.data?.id) {
         setIsOwner(true);
+      } else {
+        setIsOwner(false);
       }
 
-      // Check if already applied
-      const alreadyApplied = applicationsRes.data?.some(
-        (app: any) => app.job?.id === job?.id
+      const matchingApp = applicationsRes.data?.find(
+        (app: any) => app.job?.id === jobRes.data?.id
       );
-      if (alreadyApplied) setApplied(true);
+      if (matchingApp) {
+        setApplied(true);
+        setApplicationStatus(matchingApp.status);
+      } else {
+        setApplied(false);
+        setApplicationStatus(null);
+      }
 
     } catch (err) {
-      console.log('Check error:', err);
+      console.log('Fetch error:', err);
     } finally {
-      setCheckingOwner(false);
+      setLoading(false);
     }
   };
 
@@ -73,6 +84,7 @@ export default function JobDetailScreen() {
     try {
       await api.post(`/jobs/${id}/apply`);
       setApplied(true);
+      setApplicationStatus('APPLIED');
       Alert.alert(
         'Nag-apply ka na! ✅',
         'Makikipag-ugnayan sa iyo ang employer.',
@@ -101,7 +113,7 @@ export default function JobDetailScreen() {
     });
   };
 
-  if (loading || checkingOwner) {
+  if (loading) {
     return (
       <View style={styles.center}>
         <ActivityIndicator color={colors.primary} size="large" />
@@ -162,7 +174,9 @@ export default function JobDetailScreen() {
             {job.barangay && (
               <View style={styles.metaRow}>
                 <Ionicons name="map-outline" size={18} color={colors.primary} />
-                <Text style={styles.metaText}>{job.barangay}{job.city ? `, ${job.city}` : ''}</Text>
+                <Text style={styles.metaText}>
+                  {job.barangay}{job.city ? `, ${job.city}` : ''}
+                </Text>
               </View>
             )}
             {job.category && (
@@ -180,7 +194,9 @@ export default function JobDetailScreen() {
             {job.dateNeeded && (
               <View style={styles.metaRow}>
                 <Ionicons name="calendar-outline" size={18} color={colors.primary} />
-                <Text style={styles.metaText}>Kailangan hanggang {formatDate(job.dateNeeded)}</Text>
+                <Text style={styles.metaText}>
+                  Kailangan hanggang {formatDate(job.dateNeeded)}
+                </Text>
               </View>
             )}
             {job.postedBy && (
@@ -216,12 +232,17 @@ export default function JobDetailScreen() {
           </View>
         )}
 
-        {/* Hired — show employer contact */}
-        {applied && !isOwner && (
+        {/* Employer contact — only shown when shortlisted or hired */}
+        {applied && !isOwner &&
+          (applicationStatus === 'SHORTLISTED' || applicationStatus === 'HIRED') && (
           <View style={styles.hiredCard}>
-            <Text style={styles.hiredTitle}>📞 Contact ng Employer</Text>
+            <Text style={styles.hiredTitle}>
+              {applicationStatus === 'HIRED' ? '🎉 Napili ka!' : '⭐ Interesado ang employer!'}
+            </Text>
             <Text style={styles.hiredSub}>
-              Na-shortlist o napili ka! Maaari kang makipag-ugnayan sa employer.
+              {applicationStatus === 'HIRED'
+                ? 'Napili ka para sa trabahong ito! Makipag-ugnayan sa employer.'
+                : 'Interesado ang employer sa iyong application. Maaari kang makipag-ugnayan.'}
             </Text>
             <TouchableOpacity
               style={styles.callBtn}

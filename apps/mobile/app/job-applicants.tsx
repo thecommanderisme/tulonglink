@@ -60,38 +60,38 @@ export default function JobApplicantsScreen() {
     setRefreshing(false);
   };
 
-  const handleUpdateStatus = async (applicationId: number, status: string, phone: string) => {
-    const statusLabels: Record<string, string> = {
-      SHORTLISTED: 'i-shortlist',
-      HIRED: 'piliin bilang hired',
-      REJECTED: 'tanggihan',
-    };
-
-    Alert.alert(
-      'Kumpirmahin',
-      `Gusto mong ${statusLabels[status]} si ${phone}?`,
-      [
-        { text: 'Kanselahin', style: 'cancel' },
-        {
-          text: 'Oo',
-          style: status === 'REJECTED' ? 'destructive' : 'default',
-          onPress: async () => {
-            setUpdating(applicationId);
-            try {
-              await api.patch(`/jobs/${jobId}/applications/${applicationId}`, {
-                status,
-              });
-              await fetchApplicants();
-            } catch (err: any) {
-              Alert.alert('Error', err.response?.data?.message || 'Hindi ma-update. Subukan ulit.');
-            } finally {
-              setUpdating(null);
-            }
-          },
-        },
-      ]
-    );
+  const handleUpdateStatus = async (applicationId: number, status: string, phone: string, name: string) => {
+  const statusLabels: Record<string, string> = {
+    SHORTLISTED: 'i-shortlist',
+    HIRED: 'piliin bilang hired',
+    REJECTED: 'tanggihan',
   };
+
+  Alert.alert(
+    'Kumpirmahin',
+    `Gusto mong ${statusLabels[status]} si ${name}?`,
+    [
+      { text: 'Kanselahin', style: 'cancel' },
+      {
+        text: 'Oo',
+        style: status === 'REJECTED' ? 'destructive' : 'default',
+        onPress: async () => {
+          setUpdating(applicationId);
+          try {
+            await api.patch(`/jobs/${jobId}/applications/${applicationId}`, {
+              status,
+            });
+            await fetchApplicants();
+          } catch (err: any) {
+            Alert.alert('Error', err.response?.data?.message || 'Hindi ma-update. Subukan ulit.');
+          } finally {
+            setUpdating(null);
+          }
+        },
+      },
+    ]
+  );
+};
 
   const handleCall = (phone: string) => {
     Linking.openURL(`tel:${phone}`);
@@ -169,7 +169,10 @@ export default function JobApplicantsScreen() {
                   </View>
                   <View style={styles.applicantInfo}>
   <Text style={styles.name}>{app.applicantName || app.applicantPhone}</Text>
-  <Text style={styles.phone}>{app.applicantPhone}</Text>
+  {/* Only show phone if HIRED */}
+  {app.status === 'HIRED' && (
+    <Text style={styles.phone}>📞 {app.applicantPhone}</Text>
+  )}
   {app.applicantSkills && (
     <Text style={styles.skills}>💼 {app.applicantSkills}</Text>
   )}
@@ -187,20 +190,23 @@ export default function JobApplicantsScreen() {
                 {app.status !== 'HIRED' && (
                   <View style={styles.actions}>
                     {/* Call button */}
-                    <TouchableOpacity
-                      style={styles.callBtn}
-                      onPress={() => handleCall(app.applicantPhone)}
-                    >
-                      <Ionicons name="call-outline" size={16} color={colors.primary} />
-                      <Text style={styles.callText}>Tumawag</Text>
-                    </TouchableOpacity>
+                    {/* Call button — only show if HIRED */}
+{app.status === 'HIRED' && (
+  <TouchableOpacity
+    style={styles.callBtn}
+    onPress={() => handleCall(app.applicantPhone)}
+  >
+    <Ionicons name="call-outline" size={16} color={colors.primary} />
+    <Text style={styles.callText}>Tumawag</Text>
+  </TouchableOpacity>
+)}
 
                     {/* Status buttons */}
                     {app.status === 'APPLIED' && (
                       <TouchableOpacity
                         style={styles.shortlistBtn}
                         disabled={isUpdating}
-                        onPress={() => handleUpdateStatus(app.id, 'SHORTLISTED', app.applicantPhone)}
+                        onPress={() => handleUpdateStatus(app.id, 'SHORTLISTED', app.applicantPhone, app.applicantName || app.applicantPhone)}
                       >
                         {isUpdating ? (
                           <ActivityIndicator size="small" color={colors.warning} />
@@ -217,7 +223,7 @@ export default function JobApplicantsScreen() {
                       <TouchableOpacity
                         style={styles.hireBtn}
                         disabled={isUpdating}
-                        onPress={() => handleUpdateStatus(app.id, 'HIRED', app.applicantPhone)}
+                        onPress={() => handleUpdateStatus(app.id, 'HIRED', app.applicantPhone, app.applicantName || app.applicantPhone)}
                       >
                         {isUpdating ? (
                           <ActivityIndicator size="small" color={colors.white} />
@@ -234,7 +240,7 @@ export default function JobApplicantsScreen() {
                       <TouchableOpacity
                         style={styles.rejectBtn}
                         disabled={isUpdating}
-                        onPress={() => handleUpdateStatus(app.id, 'REJECTED', app.applicantPhone)}
+                        onPress={() => handleUpdateStatus(app.id, 'REJECTED', app.applicantPhone, app.applicantName || app.applicantPhone)}
                       >
                         {isUpdating ? (
                           <ActivityIndicator size="small" color={colors.danger} />
@@ -250,8 +256,17 @@ export default function JobApplicantsScreen() {
                 {app.status === 'HIRED' && (
                   <View style={styles.hiredBanner}>
                     <Text style={styles.hiredText}>
-                      🎉 Napili mo na ang taong ito! Makikipag-ugnayan sila sa iyo.
+                      🎉 Napili mo na ang taong ito!
                     </Text>
+                    <TouchableOpacity
+                      style={styles.contactHiredBtn}
+                      onPress={() => handleCall(app.applicantPhone)}
+                    >
+                      <Ionicons name="call-outline" size={16} color={colors.white} />
+                      <Text style={styles.contactHiredText}>
+                        📞 Tawagan si {app.applicantName || app.applicantPhone}
+                      </Text>
+                    </TouchableOpacity>
                   </View>
                 )}
               </Card>
@@ -324,6 +339,21 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
   },
+  contactHiredBtn: {
+  flexDirection: 'row',
+  alignItems: 'center',
+  gap: spacing.sm,
+  backgroundColor: colors.success,
+  padding: spacing.md,
+  borderRadius: 10,
+  justifyContent: 'center',
+  marginTop: spacing.sm,
+},
+contactHiredText: {
+  fontSize: typography.fontSizes.sm,
+  color: colors.white,
+  fontWeight: typography.fontWeights.medium,
+},
   avatarText: {
     fontSize: typography.fontSizes.md,
     fontWeight: typography.fontWeights.bold,
