@@ -15,7 +15,7 @@ const api = axios.create({
 // Request interceptor — attach JWT token to every request
 api.interceptors.request.use(
   async (config) => {
-    const token = await SecureStore.getItemAsync('accessToken');
+    const token = await SecureStore.getItemAsync('jwt_token');
     if (token) {
       config.headers.Authorization = `Bearer ${token}`;
     }
@@ -34,7 +34,7 @@ api.interceptors.response.use(
       originalRequest._retry = true;
 
       try {
-        const refreshToken = await SecureStore.getItemAsync('refreshToken');
+        const refreshToken = await SecureStore.getItemAsync('refresh_token');
         if (!refreshToken) throw new Error('No refresh token');
 
         const response = await axios.post(`${BASE_URL}/auth/refresh`, {
