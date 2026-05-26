@@ -38,20 +38,16 @@ public class JobService {
         this.profileRepository = profileRepository;
     }
 
-    public Page<JobResponse> getAllJobs(int page, int size, Long userId, boolean showAll) {
-        Pageable pageable = PageRequest.of(page, size);
-        if (showAll) {
-            // Show all including closed/filled
-            return jobRepository.findAllJobsNotPostedBy(pageable, LocalDateTime.now(), userId)
-                    .map(this::toResponse);
-        }
-        if (userId != null) {
-            return jobRepository.findByDeletedAtIsNullAndNotPostedBy(pageable, LocalDateTime.now(), userId)
-                    .map(this::toResponse);
-        }
-        return jobRepository.findByDeletedAtIsNullOrderByCreatedAtDesc(pageable, LocalDateTime.now())
+public Page<JobResponse> getAllJobs(int page, int size, Long userId, boolean showAll) {
+    Pageable pageable = PageRequest.of(page, size);
+    if (showAll) {
+        return jobRepository.findAllJobsNotPostedBy(pageable, LocalDateTime.now(), userId)
                 .map(this::toResponse);
     }
+    return jobRepository.findByDeletedAtIsNullOrderByCreatedAtDesc(pageable, LocalDateTime.now())
+            .map(this::toResponse);
+}
+
 
     public void reopenJob(Long jobId, Long userId) {
         Job job = jobRepository.findById(jobId)
@@ -65,35 +61,23 @@ public class JobService {
         jobRepository.save(job);
     }
 
-    public Page<JobResponse> getJobsByCategory(String category, int page, int size, Long userId) {
-        Pageable pageable = PageRequest.of(page, size);
-        if (userId != null) {
-            return jobRepository.findByCategoryAndDeletedAtIsNullAndNotPostedBy(category, pageable, LocalDateTime.now(), userId)
-                    .map(this::toResponse);
-        }
-        return jobRepository.findByCategoryAndDeletedAtIsNullOrderByCreatedAtDesc(category, pageable, LocalDateTime.now())
-                .map(this::toResponse);
-    }
+ public Page<JobResponse> getJobsByCategory(String category, int page, int size, Long userId) {
+    Pageable pageable = PageRequest.of(page, size);
+    return jobRepository.findByCategoryAndDeletedAtIsNullOrderByCreatedAtDesc(category, pageable, LocalDateTime.now())
+            .map(this::toResponse);
+}
 
-    public Page<JobResponse> searchJobs(String keyword, int page, int size, Long userId) {
-        Pageable pageable = PageRequest.of(page, size);
-        if (userId != null) {
-            return jobRepository.searchByTitleAndNotPostedBy(keyword, pageable, userId)
-                    .map(this::toResponse);
-        }
-        return jobRepository.searchByTitle(keyword, pageable)
-                .map(this::toResponse);
-    }
+public Page<JobResponse> searchJobs(String keyword, int page, int size, Long userId) {
+    Pageable pageable = PageRequest.of(page, size);
+    return jobRepository.searchByTitle(keyword, pageable)
+            .map(this::toResponse);
+}
 
-    public Page<JobResponse> getJobsByCity(String city, int page, int size, Long userId) {
-        Pageable pageable = PageRequest.of(page, size);
-        if (userId != null) {
-            return jobRepository.findByCityAndNotPostedBy(city, pageable, LocalDateTime.now(), userId)
-                    .map(this::toResponse);
-        }
-        return jobRepository.findByCity(city, pageable, LocalDateTime.now())
-                .map(this::toResponse);
-    }
+public Page<JobResponse> getJobsByCity(String city, int page, int size, Long userId) {
+    Pageable pageable = PageRequest.of(page, size);
+    return jobRepository.findByCity(city, pageable, LocalDateTime.now())
+            .map(this::toResponse);
+}
 
     public JobResponse getJob(Long id) {
         Job job = jobRepository.findById(id)

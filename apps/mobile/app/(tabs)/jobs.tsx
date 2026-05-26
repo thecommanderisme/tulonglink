@@ -20,6 +20,7 @@ interface Job {
   status: string;
   createdAt: string;
   applicationCount: number;
+  postedById: number;
 }
 
 interface Application {
@@ -41,10 +42,21 @@ export default function JobsScreen() {
   const [reportSubmitting, setReportSubmitting] = useState(false);
   const [reportSuccess, setReportSuccess] = useState(false);
   const [userCity, setUserCity] = useState<string | null>(null);
+  const [currentUserId, setCurrentUserId] = useState<number | null>(null);
 
   useEffect(() => {
     fetchUserCity();
+    fetchCurrentUser();
   }, []);
+
+  const fetchCurrentUser = async () => {
+    try {
+      const response = await api.get('/users/me');
+      setCurrentUserId(response.data.id);
+    } catch (err) {
+      console.log('Could not fetch user:', err);
+    }
+  };
 
   const fetchUserCity = async () => {
     try {
@@ -229,77 +241,101 @@ export default function JobsScreen() {
             />
           }
         >
-          {jobs.map(job => (
-            <TouchableOpacity
-              key={job.id}
-              activeOpacity={0.8}
-              onPress={() => router.push({
-                pathname: '/job-detail',
-                params: { id: job.id }
-              })}
-            >
-              <Card>
-                <View style={styles.jobHeader}>
-                  <Text style={styles.jobTitle}>{job.title}</Text>
-                  <Badge
-                    label={job.status === 'OPEN' ? 'Bukas' : 'Sarado'}
-                    variant={job.status === 'OPEN' ? 'success' : 'neutral'}
-                  />
-                </View>
-
-                <View style={styles.jobMeta}>
-                  {job.pay && <Text style={styles.metaText}>💰 {job.pay}</Text>}
-                  {job.location && <Text style={styles.metaText}>📍 {job.location}</Text>}
-                  {job.category && <Text style={styles.metaText}>🏷 {job.category}</Text>}
-                </View>
-
-                <View style={styles.jobFooter}>
-                  <Text style={styles.appCount}>
-                    {job.applicationCount} nag-apply
-                  </Text>
-                  <TouchableOpacity
-                    onPress={(e) => {
-                      e.stopPropagation();
-                      handleApply(job.id);
-                    }}
-                    disabled={
-                      applying === job.id ||
-                      appliedJobs.includes(job.id) ||
-                      job.status !== 'OPEN'
-                    }
-                    style={[
-                      styles.applyBtn,
-                      appliedJobs.includes(job.id) && styles.applyBtnDone,
-                      job.status !== 'OPEN' && styles.applyBtnClosed
-                    ]}
-                  >
-                    {applying === job.id ? (
-                      <ActivityIndicator color={colors.white} size="small" />
+          {jobs.map(job => {
+            const isOwnJob = currentUserId === job.postedById;
+            return (
+              <TouchableOpacity
+                key={job.id}
+                activeOpacity={0.8}
+                onPress={() => router.push({
+                  pathname: '/job-detail',
+                  params: { id: job.id }
+                })}
+              >
+                <Card>
+                  <View style={styles.jobHeader}>
+                    <Text style={styles.jobTitle}>{job.title}</Text>
+                    {isOwnJob ? (
+                      <Badge label="Iyong Post" variant="primary" />
                     ) : (
-                      <Text style={styles.applyText}>
-                        {appliedJobs.includes(job.id)
-                          ? 'Nag-apply na ✓'
-                          : job.status !== 'OPEN'
-                          ? 'Sarado na'
-                          : 'Mag-apply'}
-                      </Text>
+                      <Badge
+                        label={job.status === 'OPEN' ? 'Bukas' : 'Sarado'}
+                        variant={job.status === 'OPEN' ? 'success' : 'neutral'}
+                      />
                     )}
-                  </TouchableOpacity>
-                </View>
+                  </View>
 
-                {/* Report button */}
-                <TouchableOpacity
-                  onPress={(e) => {
-                    e.stopPropagation();
-                    setReporting(job.id);
-                  }}
-                  style={styles.reportBtn}
-                >
-                  <Text style={styles.reportText}>🚩 I-report</Text>
-                </TouchableOpacity>
-              </Card>
-            </TouchableOpacity>
-          ))}
+                  <View style={styles.jobMeta}>
+                    {job.pay && <Text style={styles.metaText}>💰 {job.pay}</Text>}
+                    {job.location && <Text style={styles.metaText}>📍 {job.location}</Text>}
+                    {job.category && <Text style={styles.metaText}>🏷 {job.category}</Text>}
+                  </View>
+
+                  <View style={styles.jobFooter}>
+                    <Text style={styles.appCount}>
+                      {job.applicationCount} nag-apply
+                    </Text>
+                    {isOwnJob ? (
+                      <TouchableOpacity
+                        style={styles.ownJobBtn}
+                        onPress={(e) => {
+                          e.stopPropagation();
+                          router.push({
+                            pathname: '/job-applicants',
+                            params: { jobId: job.id, jobTitle: job.title }
+                          });
+                        }}
+                      >
+                        <Text style={styles.ownJobBtnText}>👥 Mga Nag-apply</Text>
+                      </TouchableOpacity>
+                    ) : (
+                      <TouchableOpacity
+                        onPress={(e) => {
+                          e.stopPropagation();
+                          handleApply(job.id);
+                        }}
+                        disabled={
+                          applying === job.id ||
+                          appliedJobs.includes(job.id) ||
+                          job.status !== 'OPEN'
+                        }
+                        style={[
+                          styles.applyBtn,
+                          appliedJobs.includes(job.id) && styles.applyBtnDone,
+                          job.status !== 'OPEN' && styles.applyBtnClosed
+                        ]}
+                      >
+                        {applying === job.id ? (
+                          <ActivityIndicator color={colors.white} size="small" />
+                        ) : (
+                          <Text style={styles.applyText}>
+                            {appliedJobs.includes(job.id)
+                              ? 'Nag-apply na ✓'
+                              : job.status !== 'OPEN'
+                              ? 'Sarado na'
+                              : 'Mag-apply'}
+                          </Text>
+                        )}
+                      </TouchableOpacity>
+                    )}
+                  </View>
+
+                  {/* Report button — only for non-own jobs */}
+                  {!isOwnJob && (
+                    <TouchableOpacity
+                      onPress={(e) => {
+                        e.stopPropagation();
+                        setReporting(job.id);
+                      }}
+                      style={styles.reportBtn}
+                    >
+                      <Text style={styles.reportText}>🚩 I-report</Text>
+                    </TouchableOpacity>
+                  )}
+                </Card>
+              </TouchableOpacity>
+            );
+          })}
           <View style={{ height: 100 }} />
         </ScrollView>
       )}
@@ -378,14 +414,14 @@ export default function JobsScreen() {
       </Modal>
 
       {/* Floating Post Button */}
-<TouchableOpacity
-  style={styles.fab}
-  onPress={() => router.push('/post-job')}
-  activeOpacity={0.8}
->
-  <Ionicons name="add" size={20} color={colors.white} />
-  <Text style={styles.fabText}>Mag-post ng Trabaho</Text>
-</TouchableOpacity>
+      <TouchableOpacity
+        style={styles.fab}
+        onPress={() => router.push('/post-job')}
+        activeOpacity={0.8}
+      >
+        <Ionicons name="add" size={20} color={colors.white} />
+        <Text style={styles.fabText}>Mag-post</Text>
+      </TouchableOpacity>
 
     </View>
   );
@@ -555,6 +591,19 @@ const styles = StyleSheet.create({
     color: colors.white,
     fontWeight: typography.fontWeights.medium,
   },
+  ownJobBtn: {
+    backgroundColor: colors.primaryLight,
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.sm,
+    borderRadius: 999,
+    borderWidth: 1,
+    borderColor: colors.primary,
+  },
+  ownJobBtnText: {
+    fontSize: typography.fontSizes.xs,
+    color: colors.primary,
+    fontWeight: typography.fontWeights.medium,
+  },
   reportBtn: {
     alignItems: 'center',
     paddingTop: spacing.sm,
@@ -662,26 +711,26 @@ const styles = StyleSheet.create({
     color: colors.white,
     fontWeight: typography.fontWeights.bold,
   },
-fab: {
-  position: 'absolute',
-  bottom: spacing.xl,
-  right: spacing.xl,
-  flexDirection: 'row',
-  alignItems: 'center',
-  gap: 6,
-  paddingHorizontal: spacing.lg,
-  paddingVertical: spacing.md,
-  borderRadius: 999,
-  backgroundColor: colors.primary,
-  shadowColor: '#000',
-  shadowOffset: { width: 0, height: 2 },
-  shadowOpacity: 0.25,
-  shadowRadius: 4,
-  elevation: 5,
-},
-fabText: {
-  fontSize: typography.fontSizes.sm,
-  color: colors.white,
-  fontWeight: typography.fontWeights.bold,
-},
+  fab: {
+    position: 'absolute',
+    bottom: spacing.xl,
+    right: spacing.xl,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    paddingHorizontal: spacing.lg,
+    paddingVertical: spacing.md,
+    borderRadius: 999,
+    backgroundColor: colors.primary,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.25,
+    shadowRadius: 4,
+    elevation: 5,
+  },
+  fabText: {
+    fontSize: typography.fontSizes.sm,
+    color: colors.white,
+    fontWeight: typography.fontWeights.bold,
+  },
 });

@@ -86,6 +86,8 @@ export default function EditJobScreen() {
         description: description.trim() || null,
         requirements: requirements.trim() || null,
         workSchedule: workSchedule.trim() || null,
+        workType: workType || null,
+        contactPref: contactPref || null,
         dateNeeded: expiresAt
           ? `${expiresAt.toISOString().split('T')[0]}T23:59:59`
           : null,
