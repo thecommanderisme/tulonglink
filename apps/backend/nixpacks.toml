@@ -5,4 +5,4 @@ nixPkgs = ["jdk21"]
 cmds = ["./mvnw clean package -DskipTests"]
 
 [start]
-cmd = "java -jar target/*.jar"
+cmd = "java -Xmx400m -Xms200m -jar target/*.jar"
