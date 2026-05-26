@@ -21,7 +21,10 @@ public class CorsConfig {
             "https://*.ngrok-free.dev",
             "https://*.ngrok-free.app",
             "https://tulonglink.ph",
-            "https://*.tulonglink.ph"
+            "https://*.tulonglink.ph",
+            "https://*.railway.app",
+            "https://*.exp.direct",
+            "exp://*"
         ));
 
         config.setAllowedMethods(List.of("GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"));
