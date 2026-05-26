@@ -164,12 +164,6 @@ export default function JobDetailScreen() {
                 <Text style={styles.metaText}>{job.pay}</Text>
               </View>
             )}
-            {job.location && (
-              <View style={styles.metaRow}>
-                <Ionicons name="location-outline" size={18} color={colors.primary} />
-                <Text style={styles.metaText}>{job.location}</Text>
-              </View>
-            )}
             {job.barangay && (
               <View style={styles.metaRow}>
                 <Ionicons name="map-outline" size={18} color={colors.primary} />
