@@ -7,7 +7,8 @@ import { router, useLocalSearchParams } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import { colors, typography, spacing } from '../theme';
-import { Input, Button } from '../components';
+import { Input, Button, LocationPicker } from '../components';
+import type { LocationValue } from '../components/LocationPicker';
 import api from '../lib/api';
 
 const CATEGORIES = ['Bahay', 'Pagkain', 'Konstruksiyon', 'Bantay', 'Kalusugan', 'Iba pa'];
@@ -24,27 +25,20 @@ export default function EditJobScreen() {
   const [workSchedule, setWorkSchedule] = useState('');
   const [workType, setWorkType] = useState('');
   const [contactPref, setContactPref] = useState('');
-  const [selectedBarangay, setSelectedBarangay] = useState<any>(null);
-  const [barangays, setBarangays] = useState<any[]>([]);
-  const [showBarangayPicker, setShowBarangayPicker] = useState(false);
-  const [barangaySearch, setBarangaySearch] = useState('');
+  const [location, setLocation] = useState<LocationValue | null>(null);
   const [expiresAt, setExpiresAt] = useState<Date | null>(null);
   const [showDatePicker, setShowDatePicker] = useState(false);
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
 
   useEffect(() => {
-    fetchData();
+    fetchJob();
   }, []);
 
-  const fetchData = async () => {
+  const fetchJob = async () => {
     try {
-      const [jobRes, barangaysRes] = await Promise.all([
-        api.get(`/jobs/${jobId}`),
-        api.get('/barangays'),
-      ]);
-
-      const job = jobRes.data;
+      const response = await api.get(`/jobs/${jobId}`);
+      const job = response.data;
       setTitle(job.title || '');
       setCategory(job.category || '');
       setPay(job.pay || '');
@@ -53,15 +47,22 @@ export default function EditJobScreen() {
       setWorkSchedule(job.workSchedule || '');
       setWorkType(job.workType || '');
       setContactPref(job.contactPref || '');
-      setBarangays(barangaysRes.data);
 
       if (job.dateNeeded) {
         setExpiresAt(new Date(job.dateNeeded));
       }
 
-      if (job.barangay) {
-        const b = barangaysRes.data.find((b: any) => b.name === job.barangay);
-        if (b) setSelectedBarangay(b);
+      // Pre-fill location if barangay exists
+      if (job.barangay && job.city) {
+        setLocation({
+          provinceCode: '',
+          provinceName: '',
+          cityCode: '',
+          cityName: job.city || '',
+          barangayCode: '',
+          barangayName: job.barangay || '',
+          displayName: `${job.barangay}, ${job.city}`,
+        });
       }
     } catch (err) {
       console.log('Job fetch error:', err);
@@ -81,8 +82,8 @@ export default function EditJobScreen() {
         title: title.trim(),
         category,
         pay: pay.trim(),
-        location: selectedBarangay?.displayName || '',
-        barangayId: selectedBarangay?.id || null,
+        location: location?.displayName || '',
+        barangayId: null,
         description: description.trim() || null,
         requirements: requirements.trim() || null,
         workSchedule: workSchedule.trim() || null,
@@ -103,10 +104,6 @@ export default function EditJobScreen() {
       setSubmitting(false);
     }
   };
-
-  const filteredBarangays = barangays.filter(b =>
-    b.displayName.toLowerCase().includes(barangaySearch.toLowerCase())
-  );
 
   if (loading) {
     return (
@@ -171,77 +168,11 @@ export default function EditJobScreen() {
         {/* Section: Location */}
         <Text style={styles.sectionLabel}>Lokasyon</Text>
 
-        <Text style={styles.fieldLabel}>Barangay</Text>
-        <TouchableOpacity
-          style={styles.selector}
-          onPress={() => setShowBarangayPicker(!showBarangayPicker)}
-        >
-          <Ionicons name="location-outline" size={18} color={colors.gray400} />
-          <Text style={[
-            styles.selectorText,
-            !selectedBarangay && { color: colors.gray400 }
-          ]}>
-            {selectedBarangay?.displayName || 'Pumili ng barangay...'}
-          </Text>
-          <Ionicons
-            name={showBarangayPicker ? 'chevron-up' : 'chevron-down'}
-            size={18}
-            color={colors.gray400}
-          />
-        </TouchableOpacity>
-
-        {showBarangayPicker && (
-          <View style={styles.pickerModal}>
-            <View style={styles.pickerModalHeader}>
-              <Text style={styles.pickerModalTitle}>Piliin ang Barangay</Text>
-              <TouchableOpacity onPress={() => {
-                setShowBarangayPicker(false);
-                setBarangaySearch('');
-              }}>
-                <Ionicons name="close" size={24} color={colors.gray600} />
-              </TouchableOpacity>
-            </View>
-            <Input
-              placeholder="Maghanap..."
-              value={barangaySearch}
-              onChangeText={setBarangaySearch}
-              containerStyle={{ marginBottom: spacing.sm }}
-            />
-            <ScrollView style={{ maxHeight: 200 }} nestedScrollEnabled>
-              {filteredBarangays.map(b => (
-                <TouchableOpacity
-                  key={b.id}
-                  style={[
-                    styles.pickerItem,
-                    selectedBarangay?.id === b.id && styles.pickerItemSelected
-                  ]}
-                  onPress={() => {
-                    setSelectedBarangay(b);
-                    setShowBarangayPicker(false);
-                    setBarangaySearch('');
-                  }}
-                >
-                  <Ionicons
-                    name={selectedBarangay?.id === b.id
-                      ? 'radio-button-on' : 'radio-button-off'}
-                    size={18}
-                    color={selectedBarangay?.id === b.id
-                      ? colors.primary : colors.gray400}
-                  />
-                  <Text style={[
-                    styles.pickerItemText,
-                    selectedBarangay?.id === b.id && {
-                      color: colors.primary,
-                      fontWeight: typography.fontWeights.medium
-                    }
-                  ]}>
-                    {b.displayName}
-                  </Text>
-                </TouchableOpacity>
-              ))}
-            </ScrollView>
-          </View>
-        )}
+        <LocationPicker
+          label="Probinsya, Lungsod at Barangay"
+          value={location}
+          onChange={setLocation}
+        />
 
         {/* Section: Job Details */}
         <Text style={styles.sectionLabel}>Detalye ng Trabaho</Text>
@@ -312,12 +243,12 @@ export default function EditJobScreen() {
 
         <Text style={styles.fieldLabel}>Hanggang kailan kailangan? (Optional)</Text>
         <TouchableOpacity
-          style={styles.selector}
+          style={styles.dateSelector}
           onPress={() => setShowDatePicker(true)}
         >
           <Ionicons name="calendar-outline" size={18} color={colors.gray400} />
           <Text style={[
-            styles.selectorText,
+            styles.dateSelectorText,
             !expiresAt && { color: colors.gray400 }
           ]}>
             {expiresAt
@@ -337,7 +268,6 @@ export default function EditJobScreen() {
           <DateTimePicker
             value={expiresAt || new Date(new Date().setDate(new Date().getDate() + 1))}
             mode="date"
-            minimumDate={new Date(new Date().setHours(0, 0, 0, 0))}
             onChange={(event, date) => {
               setShowDatePicker(false);
               if (event.type === 'set' && date) {
@@ -418,7 +348,7 @@ const styles = StyleSheet.create({
     fontWeight: typography.fontWeights.medium,
   },
   chipTextActive: { color: colors.white },
-  selector: {
+  dateSelector: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: spacing.sm,
@@ -428,42 +358,11 @@ const styles = StyleSheet.create({
     padding: spacing.md,
     paddingHorizontal: spacing.lg,
     backgroundColor: colors.white,
-    marginBottom: spacing.sm,
+    marginBottom: spacing.lg,
   },
-  selectorText: {
+  dateSelectorText: {
     flex: 1,
     fontSize: typography.fontSizes.md,
-    color: colors.gray900,
-  },
-  pickerModal: {
-    backgroundColor: colors.white,
-    borderRadius: 12,
-    padding: spacing.lg,
-    marginBottom: spacing.lg,
-    borderWidth: 0.5,
-    borderColor: colors.gray200,
-  },
-  pickerModalHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: spacing.md,
-  },
-  pickerModalTitle: {
-    fontSize: typography.fontSizes.md,
-    fontWeight: typography.fontWeights.bold,
-    color: colors.gray900,
-  },
-  pickerItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing.sm,
-    padding: spacing.sm,
-    borderRadius: 8,
-  },
-  pickerItemSelected: { backgroundColor: colors.primaryLight },
-  pickerItemText: {
-    fontSize: typography.fontSizes.sm,
     color: colors.gray900,
   },
   saveBtn: { marginTop: spacing.md },

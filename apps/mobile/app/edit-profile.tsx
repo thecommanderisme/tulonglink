@@ -118,6 +118,8 @@ export default function EditProfileScreen() {
       <ScrollView
         style={styles.form}
         showsVerticalScrollIndicator={false}
+        keyboardShouldPersistTaps="handled"
+        automaticallyAdjustKeyboardInsets={true}
       >
         {/* Personal */}
         <Text style={styles.sectionLabel}>Personal</Text>

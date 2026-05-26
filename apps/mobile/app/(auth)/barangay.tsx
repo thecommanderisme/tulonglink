@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import {
   View, Text, StyleSheet,
-  TouchableOpacity, ActivityIndicator
+  TouchableOpacity
 } from 'react-native';
 import { router } from 'expo-router';
 import { colors, typography, spacing } from '../../theme';
