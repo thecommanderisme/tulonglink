@@ -35,15 +35,20 @@ public class UserController {
         return ResponseEntity.ok(user);
     }
 
-    @PostMapping("/barangay")
-    public ResponseEntity<String> setBarangay(
-            @RequestBody Map<String, Long> body,
-            Authentication auth) {
-        Long userId = Long.parseLong(auth.getName());
-        Long barangayId = body.get("barangayId");
-        userService.setBarangay(userId, barangayId);
-        return ResponseEntity.ok("Barangay updated successfully");
-    }
+@PostMapping("/barangay")
+public ResponseEntity<String> setBarangay(
+        @RequestBody Map<String, String> body,
+        Authentication auth) {
+    Long userId = Long.parseLong(auth.getName());
+    userService.setBarangayByName(
+        userId,
+        body.get("barangayName"),
+        body.get("cityName"),
+        body.get("provinceName"),
+        body.get("displayName")
+    );
+    return ResponseEntity.ok("Barangay updated successfully");
+}
 
 @GetMapping("/profile")
 public ResponseEntity<?> getProfile(Authentication auth) {

@@ -7,7 +7,8 @@ import { router } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import { colors, typography, spacing } from '../theme';
-import { Input, Button } from '../components';
+import { Input, Button, LocationPicker } from '../components';
+import type { LocationValue } from '../components/LocationPicker';
 import api from '../lib/api';
 
 const CATEGORIES = ['Bahay', 'Pagkain', 'Konstruksiyon', 'Bantay', 'Kalusugan', 'Iba pa'];
@@ -23,25 +24,26 @@ export default function PostJobScreen() {
   const [workSchedule, setWorkSchedule] = useState('');
   const [workType, setWorkType] = useState('');
   const [contactPref, setContactPref] = useState('');
-  const [selectedBarangay, setSelectedBarangay] = useState<any>(null);
-  const [barangays, setBarangays] = useState<any[]>([]);
-  const [showBarangayPicker, setShowBarangayPicker] = useState(false);
-  const [barangaySearch, setBarangaySearch] = useState('');
+  const [location, setLocation] = useState<LocationValue | null>(null);
   const [expiresAt, setExpiresAt] = useState<Date | null>(null);
   const [showDatePicker, setShowDatePicker] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
 
   useEffect(() => {
-    fetchBarangays();
+    autoFillLocation();
   }, []);
 
-  const fetchBarangays = async () => {
+  const autoFillLocation = async () => {
     try {
-      const response = await api.get('/barangays');
-      setBarangays(response.data);
+      const response = await api.get('/users/profile');
+      if (response.data?.barangayName) {
+        // We have the user's barangay name but not the PSGC codes
+        // Just show a hint — user still needs to select via picker
+        console.log('User barangay:', response.data.barangayName);
+      }
     } catch (err) {
-      console.log('Barangay fetch error:', err);
+      console.log('Could not auto-fill location:', err);
     }
   };
 
@@ -50,53 +52,48 @@ export default function PostJobScreen() {
     if (!title.trim()) newErrors.title = 'Ilagay ang titulo ng trabaho';
     if (!category) newErrors.category = 'Pumili ng kategorya';
     if (!pay.trim()) newErrors.pay = 'Ilagay ang bayad';
-    if (!selectedBarangay) newErrors.barangay = 'Pumili ng barangay';
+    if (!location) newErrors.location = 'Pumili ng lokasyon';
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
   };
 
-const handleSubmit = async () => {
-  if (!validate()) return;
-  setSubmitting(true);
-  try {
-    const payload = {
-      title: title.trim(),
-      category,
-      pay: pay.trim(),
-      location: selectedBarangay?.displayName || '',
-      dateNeeded: expiresAt
-        ? `${expiresAt.toISOString().split('T')[0]}T23:59:59`
-        : null,
-      barangayId: selectedBarangay?.id || null,
-      description: description.trim() || null,
-      requirements: requirements.trim() || null,
-      workSchedule: workSchedule.trim() || null,
-      workType: workType || null,
-      contactPref: contactPref || null,
-    };
+  const handleSubmit = async () => {
+    if (!validate()) return;
+    setSubmitting(true);
+    try {
+      const payload = {
+        title: title.trim(),
+        category,
+        pay: pay.trim(),
+        location: location?.displayName || '',
+        dateNeeded: expiresAt
+          ? `${expiresAt.toISOString().split('T')[0]}T23:59:59`
+          : null,
+        barangayId: null,
+        description: description.trim() || null,
+        requirements: requirements.trim() || null,
+        workSchedule: workSchedule.trim() || null,
+        workType: workType || null,
+        contactPref: contactPref || null,
+      };
 
-    console.log('Posting job:', JSON.stringify(payload));
+      console.log('Posting job:', JSON.stringify(payload));
+      await api.post('/jobs', payload);
 
-    await api.post('/jobs', payload);
-
-    Alert.alert(
-      'Na-post na! ✅',
-      'Ang iyong job post ay nai-publish na.',
-      [{ text: 'OK', onPress: () => router.back() }]
-    );
-  } catch (err: any) {
-    Alert.alert(
-      'Error',
-      err.response?.data?.message || 'Hindi ma-post. Subukan ulit.'
-    );
-  } finally {
-    setSubmitting(false);
-  }
-};
-
-  const filteredBarangays = barangays.filter(b =>
-    b.displayName.toLowerCase().includes(barangaySearch.toLowerCase())
-  );
+      Alert.alert(
+        'Na-post na! ✅',
+        'Ang iyong job post ay nai-publish na.',
+        [{ text: 'OK', onPress: () => router.back() }]
+      );
+    } catch (err: any) {
+      Alert.alert(
+        'Error',
+        err.response?.data?.message || 'Hindi ma-post. Subukan ulit.'
+      );
+    } finally {
+      setSubmitting(false);
+    }
+  };
 
   return (
     <View style={styles.container}>
@@ -169,83 +166,12 @@ const handleSubmit = async () => {
         {/* Section: Location */}
         <Text style={styles.sectionLabel}>Lokasyon</Text>
 
-        <Text style={styles.fieldLabel}>Barangay *</Text>
-        {errors.barangay && (
-          <Text style={styles.errorText}>{errors.barangay}</Text>
-        )}
-        <TouchableOpacity
-          style={[
-            styles.selector,
-            errors.barangay ? { borderColor: colors.danger } : {}
-          ]}
-          onPress={() => setShowBarangayPicker(!showBarangayPicker)}
-        >
-          <Ionicons name="location-outline" size={18} color={colors.gray400} />
-          <Text style={[
-            styles.selectorText,
-            !selectedBarangay && { color: colors.gray400 }
-          ]}>
-            {selectedBarangay?.displayName || 'Pumili ng barangay...'}
-          </Text>
-          <Ionicons
-            name={showBarangayPicker ? 'chevron-up' : 'chevron-down'}
-            size={18}
-            color={colors.gray400}
-          />
-        </TouchableOpacity>
-
-        {showBarangayPicker && (
-          <View style={styles.pickerModal}>
-            <View style={styles.pickerModalHeader}>
-              <Text style={styles.pickerModalTitle}>Piliin ang Barangay</Text>
-              <TouchableOpacity onPress={() => {
-                setShowBarangayPicker(false);
-                setBarangaySearch('');
-              }}>
-                <Ionicons name="close" size={24} color={colors.gray600} />
-              </TouchableOpacity>
-            </View>
-            <Input
-              placeholder="Maghanap..."
-              value={barangaySearch}
-              onChangeText={setBarangaySearch}
-              containerStyle={{ marginBottom: spacing.sm }}
-            />
-            <ScrollView style={{ maxHeight: 200 }} nestedScrollEnabled>
-              {filteredBarangays.map(b => (
-                <TouchableOpacity
-                  key={b.id}
-                  style={[
-                    styles.pickerItem,
-                    selectedBarangay?.id === b.id && styles.pickerItemSelected
-                  ]}
-                  onPress={() => {
-                    setSelectedBarangay(b);
-                    setShowBarangayPicker(false);
-                    setBarangaySearch('');
-                  }}
-                >
-                  <Ionicons
-                    name={selectedBarangay?.id === b.id
-                      ? 'radio-button-on' : 'radio-button-off'}
-                    size={18}
-                    color={selectedBarangay?.id === b.id
-                      ? colors.primary : colors.gray400}
-                  />
-                  <Text style={[
-                    styles.pickerItemText,
-                    selectedBarangay?.id === b.id && {
-                      color: colors.primary,
-                      fontWeight: typography.fontWeights.medium
-                    }
-                  ]}>
-                    {b.displayName}
-                  </Text>
-                </TouchableOpacity>
-              ))}
-            </ScrollView>
-          </View>
-        )}
+        <LocationPicker
+          label="Probinsya, Lungsod at Barangay *"
+          value={location}
+          onChange={setLocation}
+          error={errors.location}
+        />
 
         {/* Section: Job Details */}
         <Text style={styles.sectionLabel}>Detalye ng Trabaho</Text>
@@ -316,12 +242,12 @@ const handleSubmit = async () => {
 
         <Text style={styles.fieldLabel}>Hanggang kailan kailangan? (Optional)</Text>
         <TouchableOpacity
-          style={styles.selector}
+          style={styles.dateSelector}
           onPress={() => setShowDatePicker(true)}
         >
           <Ionicons name="calendar-outline" size={18} color={colors.gray400} />
           <Text style={[
-            styles.selectorText,
+            styles.dateSelectorText,
             !expiresAt && { color: colors.gray400 }
           ]}>
             {expiresAt
@@ -341,7 +267,6 @@ const handleSubmit = async () => {
           <DateTimePicker
             value={expiresAt || new Date(new Date().setDate(new Date().getDate() + 1))}
             mode="date"
-            minimumDate={new Date(new Date().setHours(0, 0, 0, 0))}
             onChange={(event, date) => {
               setShowDatePicker(false);
               if (event.type === 'set' && date) {
@@ -441,7 +366,7 @@ const styles = StyleSheet.create({
     fontWeight: typography.fontWeights.medium,
   },
   chipTextActive: { color: colors.white },
-  selector: {
+  dateSelector: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: spacing.sm,
@@ -451,42 +376,11 @@ const styles = StyleSheet.create({
     padding: spacing.md,
     paddingHorizontal: spacing.lg,
     backgroundColor: colors.white,
-    marginBottom: spacing.sm,
+    marginBottom: spacing.lg,
   },
-  selectorText: {
+  dateSelectorText: {
     flex: 1,
     fontSize: typography.fontSizes.md,
-    color: colors.gray900,
-  },
-  pickerModal: {
-    backgroundColor: colors.white,
-    borderRadius: 12,
-    padding: spacing.lg,
-    marginBottom: spacing.lg,
-    borderWidth: 0.5,
-    borderColor: colors.gray200,
-  },
-  pickerModalHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: spacing.md,
-  },
-  pickerModalTitle: {
-    fontSize: typography.fontSizes.md,
-    fontWeight: typography.fontWeights.bold,
-    color: colors.gray900,
-  },
-  pickerItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing.sm,
-    padding: spacing.sm,
-    borderRadius: 8,
-  },
-  pickerItemSelected: { backgroundColor: colors.primaryLight },
-  pickerItemText: {
-    fontSize: typography.fontSizes.sm,
     color: colors.gray900,
   },
   submitBtn: { marginTop: spacing.md },

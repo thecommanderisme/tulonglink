@@ -59,5 +59,34 @@ public void updateProfile(Long userId, String displayName, String skillsSummary,
 
     profileRepository.save(profile);
 }
+public void setBarangayByName(Long userId, String barangayName, String cityName, String provinceName, String displayName) {
+    User user = userRepository.findById(userId)
+            .orElseThrow(() -> new RuntimeException("User not found"));
 
+    Profile profile = profileRepository.findByUserId(userId)
+            .orElseGet(() -> Profile.builder().user(user).build());
+
+    profile.setDisplayName(profile.getDisplayName());
+
+    // Store location as text fields since PSGC barangays don't match our DB
+    profile.setSkillsSummary(profile.getSkillsSummary());
+
+    // Save barangay info - find or create barangay in our DB
+    Optional<Barangay> existingBarangay = barangayRepository
+            .findByNameIgnoreCaseAndCityIgnoreCase(barangayName, cityName);
+
+    if (existingBarangay.isPresent()) {
+        profile.setBarangay(existingBarangay.get());
+    } else {
+        // Create new barangay entry
+        Barangay newBarangay = new Barangay();
+        newBarangay.setName(barangayName);
+        newBarangay.setCity(cityName);
+        newBarangay.setProvince(provinceName != null ? provinceName : "");
+        Barangay saved = barangayRepository.save(newBarangay);
+        profile.setBarangay(saved);
+    }
+
+    profileRepository.save(profile);
+}
 }

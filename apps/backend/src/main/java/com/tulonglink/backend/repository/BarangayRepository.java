@@ -4,6 +4,7 @@ import com.tulonglink.backend.entity.Barangay;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.stereotype.Repository;
+import java.util.Optional;
 
 import java.util.List;
 
@@ -16,4 +17,6 @@ public interface BarangayRepository extends JpaRepository<Barangay, Long> {
 
     @Query("SELECT b FROM Barangay b WHERE LOWER(b.name) LIKE LOWER(CONCAT('%', :keyword, '%')) OR LOWER(b.city) LIKE LOWER(CONCAT('%', :keyword, '%'))")
     List<Barangay> searchByName(String keyword);
+
+    Optional<Barangay> findByNameIgnoreCaseAndCityIgnoreCase(String name, String city);
 }
