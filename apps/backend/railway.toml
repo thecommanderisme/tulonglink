@@ -1,7 +1,5 @@
-cat > ~/Documents/Projects/TulongLink/apps/backend/railway.toml << 'EOF'
 [build]
 builder = "nixpacks"
 
 [deploy]
 startCommand = "java -jar target/*.jar"
-EOF
