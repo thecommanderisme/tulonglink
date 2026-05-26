@@ -1,0 +1,10 @@
+cat > ~/Documents/Projects/TulongLink/apps/backend/nixpacks.toml << 'EOF'
+[phases.setup]
+nixPkgs = ["jdk21"]
+
+[phases.build]
+cmds = ["./mvnw clean package -DskipTests"]
+
+[start]
+cmd = "java -jar target/*.jar"
+EOF
