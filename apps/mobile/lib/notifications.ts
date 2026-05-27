@@ -40,7 +40,6 @@ export const registerForPushNotifications = async (): Promise<string | null> => 
     projectId: '1b67d243-5bed-46bd-bb2a-82a042995212',
     });
 
-  console.log('Push token:', token.data);
 
   // Send token to Spring Boot backend
   try {
