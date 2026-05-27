@@ -34,12 +34,12 @@ public class AuthController {
     }
 
     @PostMapping("/send-otp")
-    public ResponseEntity<String> sendOtp(@RequestBody AuthRequest request) {
+    public ResponseEntity<String> sendOtp(@Valid @RequestBody AuthRequest request) {
         return ResponseEntity.ok(authService.sendOtp(request.getPhone()));
     }
 
     @PostMapping("/verify-otp")
-    public ResponseEntity<AuthResponse> verifyOtp(@RequestBody AuthRequest request) {
+    public ResponseEntity<AuthResponse> verifyOtp(@Valid @RequestBody AuthRequest request) {
         return ResponseEntity.ok(authService.verifyOtp(request));
     }
 
