@@ -18,8 +18,6 @@ public class CorsConfig {
         // Allow your mobile app and partner portal
         config.setAllowedOriginPatterns(List.of(
             "http://localhost:*",
-            "https://*.ngrok-free.dev",
-            "https://*.ngrok-free.app",
             "https://tulonglink.ph",
             "https://*.tulonglink.ph",
             "https://*.railway.app",

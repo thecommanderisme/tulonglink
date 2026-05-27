@@ -86,7 +86,6 @@ public Page<JobResponse> getJobsByCity(String city, int page, int size, Long use
     }
 
     public JobResponse createJob(JobRequest request, Long userId) {
-        System.out.println("Creating job - workType: " + request.getWorkType() + ", contactPref: " + request.getContactPref() + ", description: " + request.getDescription());
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new RuntimeException("User not found"));
 
