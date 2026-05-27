@@ -1,5 +1,6 @@
 package com.tulonglink.backend.service;
 
+import com.google.firebase.auth.FirebaseAuth;
 import com.tulonglink.backend.dto.AuthRequest;
 import com.tulonglink.backend.dto.AuthResponse;
 import com.tulonglink.backend.entity.RefreshToken;
@@ -73,11 +74,9 @@ public class AuthService {
         return new AuthResponse(token, user.getRole().name(), user.getId(), "Login successful", refreshToken);
     }
 
-    // Send OTP
+    // Send OTP — generates OTP in Redis, Firebase handles SMS delivery on mobile
     public String sendOtp(String phone) {
-        String otp = otpService.generateOtp(phone);
-        // TODO: Send via Semaphore PH SMS API
-        System.out.println("OTP for " + phone + ": " + otp);
+        otpService.generateOtp(phone);
         return "OTP sent successfully";
     }
 
@@ -102,6 +101,41 @@ public class AuthService {
         String token = jwtUtil.generateToken(user.getId().toString(), user.getRole().name());
         String refreshToken = refreshTokenService.createRefreshToken(user).getToken();
         return new AuthResponse(token, user.getRole().name(), user.getId(), "OTP verified successfully", refreshToken);
+    }
+
+    // Verify Firebase ID token and exchange for JWT
+    public AuthResponse verifyFirebaseToken(String firebaseIdToken) {
+        try {
+            var decodedToken = FirebaseAuth.getInstance().verifyIdToken(firebaseIdToken);
+            String phone = (String) decodedToken.getClaims().get("phone_number");
+
+            if (phone == null) {
+                throw new RuntimeException("No phone number in Firebase token");
+            }
+
+            // Normalize phone: Firebase returns +639XX, we store 09XX
+            if (phone.startsWith("+63")) {
+                phone = "0" + phone.substring(3);
+            }
+
+            String finalPhone = phone;
+            User user = userRepository.findByPhone(finalPhone)
+                    .orElseGet(() -> {
+                        User newUser = User.builder()
+                                .phone(finalPhone)
+                                .role(User.Role.RESIDENT)
+                                .status("ACTIVE")
+                                .build();
+                        return userRepository.save(newUser);
+                    });
+
+            String token = jwtUtil.generateToken(user.getId().toString(), user.getRole().name());
+            String refreshToken = refreshTokenService.createRefreshToken(user).getToken();
+            return new AuthResponse(token, user.getRole().name(), user.getId(), "Firebase auth successful", refreshToken);
+
+        } catch (Exception e) {
+            throw new RuntimeException("Invalid Firebase token: " + e.getMessage());
+        }
     }
 
     // Refresh token

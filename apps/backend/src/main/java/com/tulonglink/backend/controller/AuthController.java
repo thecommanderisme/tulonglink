@@ -48,6 +48,11 @@ public class AuthController {
         return ResponseEntity.ok(authService.refresh(body.get("refreshToken")));
     }
 
+    @PostMapping("/verify-firebase")
+    public ResponseEntity<AuthResponse> verifyFirebase(@RequestBody Map<String, String> body) {
+        return ResponseEntity.ok(authService.verifyFirebaseToken(body.get("firebaseToken")));
+    }
+
     @PostMapping("/logout")
     public ResponseEntity<String> logout(Authentication auth) {
         if (auth != null) {

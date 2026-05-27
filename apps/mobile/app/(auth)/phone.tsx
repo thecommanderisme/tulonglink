@@ -1,10 +1,10 @@
-import { useState } from 'react';
+import { useState, useRef } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
 import { router } from 'expo-router';
 import { useTranslation } from 'react-i18next';
 import { Button, Input } from '../../components';
 import { colors, typography, spacing } from '../../theme';
-import { verifyOtp, sendOtp } from '../../lib/authApi';
+import auth from '@react-native-firebase/auth';
 
 export default function PhoneScreen() {
   const { t } = useTranslation();
@@ -20,13 +20,19 @@ export default function PhoneScreen() {
     setError('');
     setLoading(true);
     try {
-      await sendOtp(phone);
-      router.push({ pathname: '/(auth)/otp', params: { phone } });
+      // Convert 09XX to +639XX for Firebase
+      const e164Phone = '+63' + phone.substring(1);
+      const confirmation = await auth().signInWithPhoneNumber(e164Phone);
+      router.push({
+        pathname: '/(auth)/otp',
+        params: { phone, confirmationId: JSON.stringify(confirmation) }
+      });
     } catch (err: any) {
-      if (err.response?.status === 429) {
+      console.log('Firebase phone error:', err);
+      if (err.code === 'auth/too-many-requests') {
         setError('Napakaraming pagsubok. Maghintay ng isang minuto.');
       } else {
-        setError(t('phone.apiError'));
+        setError('Hindi ma-send ang OTP. Subukan ulit.');
       }
     } finally {
       setLoading(false);
