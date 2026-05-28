@@ -26,23 +26,16 @@ public class SecurityConfig {
     @Bean
     public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
         http
-            // Disable CSRF - not needed for REST APIs
             .csrf(csrf -> csrf.disable())
-
-            // Set session to STATELESS - we use JWT, not sessions
             .sessionManagement(session ->
                 session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
-
-            // Define which endpoints are public vs protected
             .authorizeHttpRequests(auth -> auth
                 .requestMatchers("/auth/**").permitAll()
                 .requestMatchers("/emergency-contacts").permitAll()
                 .requestMatchers("/barangays/**").permitAll()
-                .requestMatchers("/swagger-ui/**", "/v3/api-docs/**").permitAll()
+                .requestMatchers("/", "/privacy", "/terms").permitAll()
                 .anyRequest().authenticated()
             )
-
-            // Add our JWT filter before Spring's default auth filter
             .addFilterBefore(jwtFilter,
                 UsernamePasswordAuthenticationFilter.class);
 
