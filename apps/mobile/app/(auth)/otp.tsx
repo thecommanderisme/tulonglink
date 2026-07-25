@@ -25,23 +25,26 @@ export default function OtpScreen() {
     setLoading(true);
     try {
       const confirmation = getConfirmation();
+      console.log('DEBUG confirmation:', confirmation ? 'exists' : 'NULL');
+      console.log('DEBUG otp entered:', otp);
+      console.log('DEBUG phone:', phone);
+
       if (!confirmation) {
-        setError('Session expired. Please go back and try again.');
+        setError('DEBUG: confirmation is NULL - session expired');
         return;
       }
 
-      // Confirm OTP with Firebase
+      console.log('DEBUG calling confirmation.confirm...');
       const result = await confirmation.confirm(otp);
+      console.log('DEBUG confirm success:', result?.user?.uid);
       clearConfirmation();
 
-      // Get Firebase ID token
       const firebaseToken = await result.user.getIdToken();
+      console.log('DEBUG got firebase token:', firebaseToken ? 'yes' : 'no');
 
-      // Exchange Firebase token for your JWT
       const response = await api.post('/auth/verify-firebase', { firebaseToken });
       await saveTokens(response.data.token, response.data.refreshToken);
 
-      // Check profile and navigate
       try {
         const profileResponse = await api.get('/users/profile');
         if (profileResponse.data?.barangayId) {
@@ -56,13 +59,15 @@ export default function OtpScreen() {
       }
 
     } catch (err: any) {
-      console.log('OTP verify error:', err);
+      console.log('DEBUG OTP error code:', err.code);
+      console.log('DEBUG OTP error message:', err.message);
+      console.log('DEBUG OTP full error:', JSON.stringify(err));
       if (err.code === 'auth/invalid-verification-code') {
         setError(`Mali ang OTP: ${err.code} - ${err.message}`);
       } else if (err.code === 'auth/code-expired') {
         setError('Expired na ang OTP. Bumalik at subukan ulit.');
       } else {
-        setError(t('otp.apiError'));
+        setError(`Error: ${err.code || err.message || 'Unknown'}`);
       }
     } finally {
       setLoading(false);
@@ -72,16 +77,18 @@ export default function OtpScreen() {
   const handleResend = async () => {
     try {
       const e164Phone = '+63' + phone.substring(1);
+      console.log('DEBUG resend to:', e164Phone);
       const { setConfirmation } = await import('../../lib/firebaseConfirmation');
       const confirmation = await auth().signInWithPhoneNumber(e164Phone);
       setConfirmation(confirmation);
       setError('');
       setOtp('');
     } catch (err: any) {
+      console.log('DEBUG resend error:', err.code, err.message);
       if (err.code === 'auth/too-many-requests') {
         setError('Napakaraming pagsubok. Maghintay ng isang minuto.');
       } else {
-        setError('Hindi ma-resend. Subukan ulit.');
+        setError(`Resend error: ${err.code || err.message}`);
       }
     }
   };
