@@ -30,7 +30,7 @@ export default function PhoneScreen() {
       if (err.code === 'auth/too-many-requests') {
         setError('Napakaraming pagsubok. Maghintay ng isang minuto.');
       } else {
-        setError('Hindi ma-send ang OTP. Subukan ulit.');
+        setError(`Error: ${err.code || err.message || 'Unknown'}`);
       }
     } finally {
       setLoading(false);
