@@ -58,7 +58,7 @@ export default function OtpScreen() {
     } catch (err: any) {
       console.log('OTP verify error:', err);
       if (err.code === 'auth/invalid-verification-code') {
-        setError('Mali ang OTP. Subukan ulit.');
+        setError(`Mali ang OTP: ${err.code} - ${err.message}`);
       } else if (err.code === 'auth/code-expired') {
         setError('Expired na ang OTP. Bumalik at subukan ulit.');
       } else {
