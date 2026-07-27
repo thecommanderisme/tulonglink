@@ -1,33 +1,13 @@
 {
   "project_info": {
-    "project_number": "117672367213",
-    "firebase_url": "https://contrataprojectdlh.firebaseio.com",
-    "project_id": "contrataprojectdlh",
-    "storage_bucket": "contrataprojectdlh.firebasestorage.app"
+    "project_number": "261399938271",
+    "project_id": "tulonglink",
+    "storage_bucket": "tulonglink.firebasestorage.app"
   },
   "client": [
     {
       "client_info": {
-        "mobilesdk_app_id": "1:117672367213:android:9e2cfce38d1bce7303db64",
-        "android_client_info": {
-          "package_name": "com.example.contrata"
-        }
-      },
-      "oauth_client": [],
-      "api_key": [
-        {
-          "current_key": "AIzaSyDVDzbv3_2jih2frfF2R6gd9xs_Y38-G_s"
-        }
-      ],
-      "services": {
-        "appinvite_service": {
-          "other_platform_oauth_client": []
-        }
-      }
-    },
-    {
-      "client_info": {
-        "mobilesdk_app_id": "1:117672367213:android:c0f8440af99d3de303db64",
+        "mobilesdk_app_id": "1:261399938271:android:1f9bbe749aa9abd784d56a",
         "android_client_info": {
           "package_name": "com.tulonglink.mobile"
         }
@@ -35,7 +15,7 @@
       "oauth_client": [],
       "api_key": [
         {
-          "current_key": "AIzaSyDVDzbv3_2jih2frfF2R6gd9xs_Y38-G_s"
+          "current_key": "AIzaSyCBtDYefzNIvwJL51AWFpqXl4AHpMkeOCM"
         }
       ],
       "services": {
